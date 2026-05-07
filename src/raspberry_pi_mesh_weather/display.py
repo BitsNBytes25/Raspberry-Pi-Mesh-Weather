@@ -1,5 +1,6 @@
+import argparse
+import logging
 import time
-from pprint import pprint
 
 from luma.core.interface.serial import spi
 from luma.core.render import canvas
@@ -15,6 +16,23 @@ from .libs.mesh_contacts import get_repeater_names
 
 
 def main():
+	parser = argparse.ArgumentParser(description="Meshcore Display Handler")
+
+	# Add the --debug flag
+	# action="store_true" means it becomes True if present, and False if not
+	parser.add_argument(
+		'--debug',
+		action='store_true',
+		help='Enable debug mode with verbose logging'
+	)
+
+	args = parser.parse_args()
+
+	if args.debug:
+		logging.getLogger().setLevel(logging.DEBUG)
+		logging.basicConfig(level=logging.DEBUG)
+		logging.debug("Debug mode enabled")
+
 	load_dotenv()
 
 	# Set to False to disable the display support
@@ -87,8 +105,31 @@ def main():
 	# 2. Initialize the SH1106 device
 	device = sh1106(serial, rotate=2, width=128, height=64)
 
+	# When the service starts (or restarts), the screen should be active by default.
+	with open('/tmp/wake', 'w') as f:
+		f.write('wake')
+
 	counter = 0
+	last_state = True
 	while True:
+		if not os.path.exists('/tmp/wake'):
+			# Screen is off, sleep
+			time.sleep(10)
+			continue
+
+		# If the wake file was last modified more than 120 seconds ago, sleep
+		if os.path.exists('/tmp/wake') and (time.time() - os.path.getmtime('/tmp/wake')) > 120:
+			logging.debug('Going back to sleep')
+			os.remove('/tmp/wake')
+			device.clear()
+			last_state = False
+			time.sleep(10)
+			continue
+
+		if not last_state:
+			logging.debug('Waking up')
+			last_state = True
+
 		counter += 1
 		if counter > 12:
 			counter = 1
