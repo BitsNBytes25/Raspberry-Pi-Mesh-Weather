@@ -110,7 +110,7 @@ def cmd_temp():
 		if 24 < real_temp <= 29:
 			hi = int(get_heat_index(real_temp, humidity))
 			fake_hi = int(hi * 1.8 + 32)
-			feels_like = f"{hi}°C ({fake_hi}°F"
+			feels_like = f"{hi}°C ({fake_hi}°F)"
 
 			if pressure_change == -1:
 				return f"☔ It's a hot and muggy {temps} and feels like {feels_like}.  Expect storms soon."
