@@ -1,0 +1,54 @@
+import time
+import requests
+
+
+def push_to_ha(ha_url, ha_token, sensor_name, value, unit):
+	HEADERS = {
+		"Authorization": f"Bearer {ha_token}",
+		"content-type": "application/json",
+	}
+	url = f"{ha_url}/api/states/sensor.mesh_{sensor_name}"
+	payload = {
+		"state": value,
+		"attributes": {
+			"unit_of_measurement": unit,
+			"friendly_name": f"Mesh {sensor_name.capitalize()}"
+		}
+	}
+	try:
+		response = requests.post(url, headers=HEADERS, json=payload, timeout=5)
+		response.raise_for_status()
+	except Exception as e:
+		print(f"HA Push Error ({sensor_name}): {e}")
+
+
+def push_mesh_node_to_map(ha_url, ha_token, info):
+	HEADERS = {
+		"Authorization": f"Bearer {ha_token}",
+		"content-type": "application/json",
+	}
+	# Create a slug-friendly ID from the pubkey (e.g., sensor.mesh_node_a1b2c3d4)
+	pubkey = info.get("public_key", "")
+	entity_id = f"device_tracker.mesh_node_{pubkey[:8].lower()}"
+	url = f"{ha_url}/api/states/{entity_id}"
+
+	lat = info.get("adv_lat")
+	lng = info.get("adv_lon")
+
+	# Only push if coordinates exist
+	if lat and lng:
+		payload = {
+			"state": "home" if info.get("lastmod", 0) > (time.time() - 3600) else "not_home",
+			"attributes": {
+				"latitude": float(lat),
+				"longitude": float(lng),
+				"source_type": "gps",
+				"friendly_name": info.get("adv_name", f"Mesh {pubkey[:8]}"),
+				"icon": "mdi:antenna"
+			}
+		}
+
+		try:
+			requests.post(url, headers=HEADERS, json=payload, timeout=5)
+		except Exception as e:
+			print(f"Map Push Error: {e}")

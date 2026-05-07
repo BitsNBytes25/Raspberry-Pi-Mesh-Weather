@@ -1,0 +1,24 @@
+[project]
+name = "raspberry-pi-mesh-weather"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.12"
+dependencies = [
+    "luma.oled>=3.15.0",
+    "meshcore>=2.3.7",
+    "pimoroni-bme280>=1.0.0",
+    "python-dotenv>=1.2.2",
+    "requests>=2.33.1",
+    "RPi.GPIO>=0.7.1",
+    "smbus2>=0.6.1",
+    "spidev>=3.8",
+]
+
+[tool.uv]
+package = true
+
+[project.scripts]
+display = "raspberry_pi_mesh_weather.display:main"
+meshcore = "raspberry_pi_mesh_weather.watch_meshcore:main"
+sensors = "raspberry_pi_mesh_weather.watch_sensors:main"
+
