@@ -11,7 +11,7 @@ Direct messages over the mesh are supported too.
 
 ## Expected Hardware
 
-* Raspberry Pi (Zero 2 W or better)
+* Raspberry Pi (Zero W or better)
 * BME280 Temperature/Humidity/Pressure Sensor
 * MeshCore-compatible USB companion device
 * Microcenter 1.3" OLED Display (345785)

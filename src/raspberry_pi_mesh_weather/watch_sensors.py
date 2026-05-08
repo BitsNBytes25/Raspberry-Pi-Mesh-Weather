@@ -37,6 +37,7 @@ def main():
 	addr_label = hex(BME280_ADDR)  # For pretty printing.
 	HA_URL = os.getenv("HA_URL")
 	HA_TOKEN = os.getenv("HA_TOKEN")
+	ALTITUDE = float(os.getenv('ALTITUDE', 0))
 
 	# Initialize I2C bus
 	logging.debug(f"Connecting to BME280 on port {BME280_PORT}...")
@@ -59,6 +60,13 @@ def main():
 			p = data.pressure
 			t = data.temperature
 			h = data.humidity
+
+			# Translate the pressure to Mean Sea Level Pressure (MSLP)
+			if ALTITUDE > 0:
+				# International Barometric Formula
+				normalized_p = p / (1 - (ALTITUDE / 44330.0)) ** 5.255
+				logging.debug(f"Normalized pressure {p} -> {normalized_p}")
+				p = normalized_p
 
 			set_pressure(p)
 			set_temperature(t)
