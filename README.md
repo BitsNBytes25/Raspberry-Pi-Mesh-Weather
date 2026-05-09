@@ -16,6 +16,11 @@ Direct messages over the mesh are supported too.
 * MeshCore-compatible USB companion device
 * Microcenter 1.3" OLED Display (345785)
 
+Refer to our [build guide](https://bitsnbytes.dev/posts/2026-05/pi-mesh-weather-sensor.html)
+for details on assembling the hardware for this project and wiring schematics.
+
+![Assembled Hardware](docs/media/raspberry-pi-mesh-radio.webp)
+
 
 ## Installation
 
@@ -39,6 +44,8 @@ chmod +x install.sh
 * !pressure - Get the current pressure
 * !all - Get temp, humidity, and pressure
 
+![Example Group Chat](docs/media/chat-group.webp)
+
 
 ## Supported Commands (direct message)
 
@@ -50,6 +57,8 @@ chmod +x install.sh
 * uptime - Get the uptime of the device
 * cpu - Get the CPU usage of the device
 * wake - Wake the device display for 2 minutes
+
+![Example Direct Message](docs/media/chat-direct.webp)
 
 
 ## Example Responses
