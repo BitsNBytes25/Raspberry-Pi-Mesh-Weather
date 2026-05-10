@@ -87,6 +87,11 @@ def main():
 				logging.debug(f"Normalized pressure {p} -> {normalized_p}")
 				p = normalized_p
 
+			# The BME280 has a crazy level of precision, but isn't overly accurate, so trim down the precision a bit
+			p = round(p, 3)
+			t = round(t, 2)
+			h = round(h, 2)
+
 			set_pressure(p)
 			set_temperature(t)
 			set_humidity(h)
@@ -97,7 +102,7 @@ def main():
 				push_to_ha(HA_URL, HA_TOKEN, "humidity", h, "%")
 				push_to_ha(HA_URL, HA_TOKEN, "pressure", p, "hPa")
 
-			time.sleep(10)
+			time.sleep(60)
 		except KeyboardInterrupt:
 			logging.info("Keyboard interrupt received. Exiting...")
 			sys.exit(0)
