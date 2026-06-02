@@ -23,6 +23,7 @@ import sys
 import time
 import argparse
 import logging
+from datetime import datetime
 from dotenv import load_dotenv
 from meshcore import MeshCore, EventType
 
@@ -31,11 +32,15 @@ from .libs.humidity import get_humidity
 from .libs.mesh_contacts import store_contacts
 from .libs.pressure import get_pressure, get_pressure_change
 from .libs.temperature import get_temperature
+from .libs.weather_forecast import WeatherForecast
 
 radio = None
 MESH_PORT = None
 HA_URL = None
 HA_TOKEN = None
+OPENWEATHERMAP_API_KEY = None
+OPENWEATHERMAP_LOCATION = None
+LOCATION_LABEL = None
 
 
 def cmd_ping():
@@ -46,6 +51,76 @@ def cmd_uptime():
 	with open('/proc/uptime', 'r') as f:
 		uptime = float(f.read().split()[0])
 		return f"Uptime: {uptime} seconds"
+
+
+# --- Daily Forecast Integration (New Feature) ---
+async def run_daily_forecast(channel):
+	"""Runs the forecast fetch and broadcasts it."""
+	global radio
+
+	message = fetch_daily_forecast()
+	if message == '':
+		return
+
+	if radio:
+		# Broadcast to all nodes (or a specific group if MESH_PORT is set)
+		await radio.commands.send_chan_msg(channel, message)
+	else:
+		print("Warning: Radio not initialized. Could not broadcast daily forecast.")
+		print(f"Forecast message ready: {message}")
+
+
+def cmd_daily_forecast():
+	"""
+	Fetches the daily weather forecast and returns a formatted message ready for broadcasting.
+	"""
+	return fetch_daily_forecast()
+
+
+def fetch_daily_forecast() -> str:
+	"""
+	Fetches the daily weather forecast and broadcasts it over the mesh network.
+	"""
+	global OPENWEATHERMAP_API_KEY, OPENWEATHERMAP_LOCATION, LOCATION_LABEL
+
+	if OPENWEATHERMAP_API_KEY is None or OPENWEATHERMAP_API_KEY == '':
+		print('No API key set for openweathermap.org, no forecast data available')
+		return ''
+
+	if OPENWEATHERMAP_LOCATION is None or OPENWEATHERMAP_LOCATION == '':
+		print('No location set for openweathermap.org, no forecast data available')
+		return ''
+
+	if LOCATION_LABEL is None or LOCATION_LABEL == '':
+		header = 'Daily Forecast'
+	else:
+		header = f'Daily Forecast for {LOCATION_LABEL}'
+
+	print('--- Running Daily Weather Forecast Fetch ---')
+	try:
+		# Initialize the weather client (it will read OPENWEATHERMAP_API_KEY)
+		weather_client = WeatherForecast(OPENWEATHERMAP_API_KEY)
+		forecast = weather_client.get_daily_forecast(location=OPENWEATHERMAP_LOCATION)
+		
+		if not forecast:
+			print('Weather Forecast: Failed to retrieve data.')
+			return ''
+
+		low_f = round(forecast['low_temp'] * 1.8 + 32, 0)
+		high_f = round(forecast['high_temp'] * 1.8 + 32, 0)
+
+		# Format the message for broadcasting
+		message = (
+			f"{header}: {forecast['general_outlook']}\n"
+			f"  Low/High: {forecast['low_temp']}°C ({low_f}°F) / {forecast['high_temp']}°C ({high_f}°F)"
+		)
+		if len(forecast['watches']) > 0:
+			message += '\nWatches: ' + ', '.join(w.get('name', 'Unnamed Watch') for w in forecast['watches'])
+		return message
+	except Exception as e:
+		error_msg = f"Daily Weather: An error occurred during forecast fetching/broadcasting: {e}"
+		print(f"Weather Forecast Error: {e}")
+		return error_msg
 
 
 def cmd_cpu():
@@ -283,6 +358,9 @@ async def monitor_mesh():
 
 	last_local = 0
 	last_flood = 0
+	last_daily = 0
+
+	weather_channel = 1
 
 	# Some devices allow setting this via custom variables or specific commands
 	# This ensures discovered nodes are added to memory automatically
@@ -298,7 +376,7 @@ async def monitor_mesh():
 
 	# Subscribe to the "#weather" channel
 	logging.debug('Subscribing to channel #weather...')
-	await radio.commands.set_channel(1, '#weather')
+	await radio.commands.set_channel(weather_channel, '#weather')
 
 	# Checks ALL events
 	# radio.subscribe(None, handle_event)
@@ -314,6 +392,7 @@ async def monitor_mesh():
 	while True:
 		try:
 			now = time.time()
+			hour = datetime.now().hour
 
 			# 2. Update Peer/Repeater list
 			contacts = await radio.commands.get_contacts()
@@ -339,6 +418,11 @@ async def monitor_mesh():
 				await radio.commands.send_advert(False)
 				last_local = now
 
+			if 6 <= hour < 7 and now - last_daily > FLOOD_INTERVAL:
+				# Sometime during the 6am hour, send the daily report.
+				await run_daily_forecast(weather_channel)
+				last_daily = now
+
 			await asyncio.sleep(60)
 		except KeyboardInterrupt:
 			logging.info("Keyboard interrupt received. Exiting...")
@@ -350,7 +434,7 @@ async def monitor_mesh():
 
 
 def main():
-	global MESH_PORT, HA_URL, HA_TOKEN
+	global MESH_PORT, HA_URL, HA_TOKEN, OPENWEATHERMAP_API_KEY, OPENWEATHERMAP_LOCATION, LOCATION_LABEL
 
 	parser = argparse.ArgumentParser(description="Meshcore Watcher Application")
 
@@ -374,5 +458,8 @@ def main():
 	MESH_PORT = os.getenv('MESH_PORT', '/dev/ttyUSB0')
 	HA_URL = os.getenv("HA_URL")
 	HA_TOKEN = os.getenv("HA_TOKEN")
+	OPENWEATHERMAP_API_KEY = os.getenv("OPENWEATHERMAP_API_KEY")
+	OPENWEATHERMAP_LOCATION = os.getenv("OPENWEATHERMAP_LOCATION")
+	LOCATION_LABEL = os.getenv("LOCATION_LABEL")
 
 	asyncio.run(monitor_mesh())
