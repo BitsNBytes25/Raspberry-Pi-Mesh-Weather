@@ -70,13 +70,6 @@ async def run_daily_forecast(channel):
 		print(f"Forecast message ready: {message}")
 
 
-def cmd_daily_forecast():
-	"""
-	Fetches the daily weather forecast and returns a formatted message ready for broadcasting.
-	"""
-	return fetch_daily_forecast()
-
-
 def fetch_daily_forecast() -> str:
 	"""
 	Fetches the daily weather forecast and broadcasts it over the mesh network.
@@ -291,6 +284,8 @@ async def handle_channel_message(event):
 
 			if len(sensors) > 0:
 				sensor = 'Current conditions here:\n' + ' | '.join(sensors)
+		elif text == '!forecast':
+			sensor = fetch_daily_forecast()
 
 		if sensor is not None:
 			await radio.commands.send_chan_msg(channel, sensor)
@@ -313,7 +308,7 @@ async def handle_direct_message(event):
 
 	if text == 'help':
 		message = 'Available commands:\n'
-		commands = ['ping', 'uptime', 'cpu', 'temp', 'pres', 'wake']
+		commands = ['ping', 'uptime', 'cpu', 'temp', 'pres', 'wake', 'forecast']
 		message += ' | '.join(commands)
 	elif text == 'ping':
 		message = cmd_ping()
@@ -330,6 +325,8 @@ async def handle_direct_message(event):
 		with open('/tmp/wake', 'w') as f:
 			f.write('wake')
 		message = 'Device display should wake up shortly.'
+	elif text == 'forecast':
+		message = fetch_daily_forecast()
 
 	if message is None:
 		message = 'Sorry, I don\'t understand that command.  Try "help" for a list of commands.'
