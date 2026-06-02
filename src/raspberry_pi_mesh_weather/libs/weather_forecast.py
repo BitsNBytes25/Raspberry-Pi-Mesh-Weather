@@ -47,33 +47,39 @@ class WeatherForecast:
         """
 
         morning = None
+        morning_i = None
         noon = None
+        noon_i = None
         afternoon = None
+        afternoon_i = None
         for item in breakdown:
             if 7 <= item['hour'] < 11:
-                morning = item['icon'] + '  ' + item['description']
+                morning_i = item['icon']
+                morning = item['description']
             elif 11 <= item['hour'] < 13:
-                noon = item['icon'] + '  ' + item['description']
+                noon_i = item['icon']
+                noon = item['description']
             elif 15 <= item['hour'] < 19:
-                afternoon = item['icon'] + '  ' + item['description']
+                afternoon_i = item['icon']
+                afternoon = item['description']
 
         if morning and noon and afternoon:
             if morning == noon == afternoon:
-                return morning + ' all day'
+                return f"{morning_i}  {morning} all day"
             if morning == noon:
-                return morning + ' until afternoon then ' + afternoon
+                return f"{morning_i}  {morning}\nuntil afternoon then\n{afternoon_i}  {afternoon}"
             if noon == afternoon:
-                return morning + ' then ' + noon + ' around noon'
+                return f"{morning_i}  {morning}\nthen around noon\n{afternoon_i}  {afternoon}"
 
         parts = []
         if morning:
-            parts.append(morning + ' in the morning')
+            parts.append(f"{morning_i}  early {morning}")
         if noon:
-            parts.append(noon + ' around noon')
+            parts.append(f"{noon_i}  noon {noon}")
         if afternoon:
-            parts.append(afternoon + ' in the afternoon')
+            parts.append(f"{afternoon_i}  late {afternoon}")
 
-        return ', '.join(parts)
+        return '\n'.join(parts)
 
 
     def get_daily_forecast(self, location: str = "London", lat: float = None, lon: float = None) -> dict:

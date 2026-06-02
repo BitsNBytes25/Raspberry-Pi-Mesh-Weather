@@ -94,7 +94,7 @@ def fetch_daily_forecast() -> str:
 	if LOCATION_LABEL is None or LOCATION_LABEL == '':
 		header = 'Daily Forecast'
 	else:
-		header = f'Daily Forecast for {LOCATION_LABEL}'
+		header = f'Today for {LOCATION_LABEL}'
 
 	print('--- Running Daily Weather Forecast Fetch ---')
 	try:
@@ -111,11 +111,8 @@ def fetch_daily_forecast() -> str:
 
 		# Format the message for broadcasting
 		message = (
-			f"{header}: {forecast['general_outlook']}\n"
-			f"  Low/High: {forecast['low_temp']}°C ({low_f}°F) / {forecast['high_temp']}°C ({high_f}°F)"
+			f"{header}:\n{forecast['general_outlook']}\nLow/High: {forecast['low_temp']} / {forecast['high_temp']}°C\n({low_f} / {high_f}°F)"
 		)
-		if len(forecast['watches']) > 0:
-			message += '\nWatches: ' + ', '.join(w.get('name', 'Unnamed Watch') for w in forecast['watches'])
 		return message
 	except Exception as e:
 		error_msg = f"Daily Weather: An error occurred during forecast fetching/broadcasting: {e}"
