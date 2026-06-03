@@ -43,6 +43,8 @@ chmod +x install.sh
 * !humidity - Get the current humidity
 * !pressure - Get the current pressure
 * !all - Get temp, humidity, and pressure
+* !forecast - Get the 1-day forecast
+* !alerts - Get any current weather alerts
 
 ![Example Group Chat](docs/media/chat-group.webp)
 
@@ -57,6 +59,13 @@ chmod +x install.sh
 * uptime - Get the uptime of the device
 * cpu - Get the CPU usage of the device
 * wake - Wake the device display for 2 minutes
+* forecast - Get the 1-day forecast
+* alerts - Get any current weather alerts
+* 🔒 reboot - Reboot the device
+* 🔒 net - Get the current network status
+
+(🔒 denotes commands which require authorization)
+
 
 ![Example Direct Message](docs/media/chat-direct.webp)
 

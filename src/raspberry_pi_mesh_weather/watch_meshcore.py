@@ -425,11 +425,11 @@ class WatchMeshcore:
 		pprint(event)
 
 		if text == 'help':
-			message = 'Available commands (* denotes auth req):\n'
+			message = 'Available commands:\n'
 			commands = [
 				'ping', 'uptime', 'cpu', 'wake',
 				'temp', 'pres', 'forecast', 'alerts',
-				'reboot*', 'net*'
+				'reboot 🔒', 'net 🔒'
 			]
 			message += ' | '.join(commands)
 		elif text == 'ping':
