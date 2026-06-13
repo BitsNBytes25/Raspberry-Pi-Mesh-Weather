@@ -23,7 +23,7 @@ import sys
 import time
 import argparse
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 from meshcore import MeshCore, EventType
 
@@ -102,6 +102,7 @@ class WatchMeshcore:
 			self.auth_radios = auth_radios.split(',')
 		else:
 			self.auth_radios = []
+		self.rf_data_cache = {}
 
 	def cmd_ping(self) -> CommandResponse:
 		return CommandResponseSuccess('pong')
@@ -355,6 +356,7 @@ class WatchMeshcore:
 		:param event:
 		:return:
 		"""
+		logging.debug('Parsing CHANNEL_MSG_RECV Event')
 
 		channel = event.payload['channel_idx']
 		text = event.payload.get('text', '')
@@ -402,7 +404,7 @@ class WatchMeshcore:
 				await self.radio.commands.send_chan_msg(channel, cmd.message)
 
 		else:
-			logging.debug(f"Received message on channel {channel}: {text}")
+			logging.debug(f"Ignored message on channel {channel}: {text}")
 
 	def run_event(self, event):
 		from pprint import pprint
@@ -416,6 +418,15 @@ class WatchMeshcore:
 		return cmd()
 
 	async def run_direct_message(self, event):
+		"""
+		Event to handle direct messages received by this radio
+
+		These are usually private queries for weather updates or other direct commands
+
+		:param event:
+		:return:
+		"""
+		logging.debug('Parsing CONTACT_MSG_RECV Event')
 
 		message = None
 		text = event.payload.get('text', '').lower()
@@ -466,6 +477,63 @@ class WatchMeshcore:
 		else:
 			logging.debug(f"Reply sent to {target}")
 
+	async def run_rx_log(self, event):
+		logging.debug('Parsing RX_LOG_DATA Event')
+		from pprint import pprint
+		import json
+		print(json.dumps(event.payload))
+		pprint(event.payload)
+
+		payload = event.payload
+
+		if 'snr' not in payload:
+			logging.error('RX_LOG_DATA Event has no snr')
+			return
+
+		# Try to get packet data - prefer 'payload' field, fallback to 'raw_hex'
+		raw_hex = None
+
+		# First, try the 'payload' field (already stripped of framing bytes)
+		if 'payload' in payload and payload['payload']:
+			raw_hex = payload['payload']
+		# Fallback to raw_hex with first 2 bytes stripped
+		elif 'raw_hex' in payload and payload['raw_hex']:
+			raw_hex = payload['raw_hex'][4:]  # Skip first 2 bytes (4 hex chars)
+
+		if raw_hex is None:
+			logging.error('RX_LOG_DATA Event has no raw_hex')
+			return
+
+		packet_prefix = raw_hex[:32]
+
+		rf_data = {
+			'snr': payload.get('snr'),
+			'rssi': payload.get('rssi'),
+			'timestamp': time.time(),
+			'raw_hex': raw_hex,
+			'payload_length': payload.get('payload_length')
+		}
+
+		self.rf_data_cache[packet_prefix] = rf_data
+
+		# Clean up old cache entries
+		current_time = time.time()
+		timeout = 10
+		self.rf_data_cache = {
+			k: v for k, v in self.rf_data_cache.items()
+			if current_time - v['timestamp'] < timeout
+		}
+
+	async def run_raw_data(self, event):
+		logging.debug('Parsing RAW_DATA Event')
+		from pprint import pprint
+		pprint(event.payload)
+
+	async def run_status(self, event):
+		logging.debug('Parsing STATUS_RESPONSE Event')
+		from pprint import pprint
+		pprint(event.payload)
+
 	async def _setup_radio(self):
 		logging.debug(f"Connecting Meshcore via serial port {self.mesh_port}")
 		try:
@@ -498,6 +566,9 @@ class WatchMeshcore:
 		logging.debug('Subscribing to channel messages...')
 		self.channel_subscription = self.radio.subscribe(EventType.CHANNEL_MSG_RECV, self.run_channel_message)
 		self.direct_subscription = self.radio.subscribe(EventType.CONTACT_MSG_RECV, self.run_direct_message)
+		self.rx_log_subscription = self.radio.subscribe(EventType.RX_LOG_DATA, self.run_rx_log)
+		self.raw_data_subscription = self.radio.subscribe(EventType.RAW_DATA, self.run_raw_data)
+		self.status_subscription = self.radio.subscribe(EventType.STATUS_RESPONSE, self.run_status)
 
 		logging.debug('Mesh Radio Ready!')
 
@@ -586,7 +657,11 @@ class WatchMeshcore:
 
 				await asyncio.sleep(60)
 			except KeyboardInterrupt:
-				logging.info("Keyboard interrupt received. Exiting...")
+				logging.info('Keyboard interrupt received. Exiting...')
+				await self._shutdown_radio()
+				sys.exit(0)
+			except asyncio.CancelledError:
+				logging.info('Shutdown signal received, exiting...')
 				await self._shutdown_radio()
 				sys.exit(0)
 

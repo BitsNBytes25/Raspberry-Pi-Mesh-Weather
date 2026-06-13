@@ -1,0 +1,18 @@
+{
+  "header": 10,
+  "path": "be",
+  "path_hash_size": 1,
+  "path_len": 1,
+  "payload": "0a01be5d4add7ef5cad341e6947e147312863508a40f02",
+  "payload_length": 23,
+  "payload_type": 2,
+  "payload_typename": "TEXT_MSG",
+  "payload_ver": 0,
+  "pkt_hash": 173548026,
+  "raw_hex": "36d40a01be5d4add7ef5cad341e6947e147312863508a40f02",
+  "recv_time": 1781273407,
+  "route_type": 2,
+  "route_typename": "DIRECT",
+  "rssi": -30,
+  "snr": 12.0
+}
