@@ -1,23 +1,20 @@
 import requests
 import logging
 from datetime import date, datetime
+from .config import config
 
 
 class WeatherForecast:
 	"""
 	Handles fetching daily weather forecast data from an external API.
 	"""
-	def __init__(self, api_key: str = None, lat: float = None, lon: float = None):
+	def __init__(self):
 		"""
 		Initializes the WeatherForecast client.
-
-		:param api_key: The OpenWeatherMap API key.
-		:param lat: Latitude of the location.
-		:param lon: Longitude of the location.
 		"""
-		self.api_key = api_key
-		self.lat = lat
-		self.lon = lon
+		self.api_key = config.weather.openweather_api_key
+		self.lat = config.location.lat
+		self.lon = config.location.lon
 		self.base_url = "http://api.openweathermap.org/data"
 
 		if not self.api_key:

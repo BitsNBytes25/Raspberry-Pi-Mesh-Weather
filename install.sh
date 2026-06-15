@@ -8,6 +8,12 @@ INSTALL_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 UV_PATH="$HOME/.local/bin/uv"
 
 echo "📍 Detected Working Directory: $INSTALL_DIR"
+
+echo "Ensuring Python virtual environment"
+if [ -e "$INSTALL_DIR/.venv" ]; then
+	uv sync
+fi
+
 echo "🛠️ Creating systemd service files..."
 
 # --- 1. MESH WATCHER SERVICE ---

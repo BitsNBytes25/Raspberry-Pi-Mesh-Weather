@@ -19,9 +19,13 @@
 
 import time
 import requests
+from .config import config
 
 
-def push_to_ha(ha_url, ha_token, sensor_name, value, unit):
+def push_to_ha(sensor_name, value, unit):
+	ha_url = config.home_assistant.url
+	ha_token = config.home_assistant.token
+
 	HEADERS = {
 		"Authorization": f"Bearer {ha_token}",
 		"content-type": "application/json",
@@ -41,7 +45,10 @@ def push_to_ha(ha_url, ha_token, sensor_name, value, unit):
 		print(f"HA Push Error ({sensor_name}): {e}")
 
 
-def push_mesh_node_to_map(ha_url, ha_token, info):
+def push_mesh_node_to_map(info):
+	ha_url = config.home_assistant.url
+	ha_token = config.home_assistant.token
+
 	HEADERS = {
 		"Authorization": f"Bearer {ha_token}",
 		"content-type": "application/json",

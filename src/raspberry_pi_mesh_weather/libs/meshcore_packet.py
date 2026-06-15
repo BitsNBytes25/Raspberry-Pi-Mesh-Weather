@@ -11,7 +11,7 @@ class MeshcorePacket:
 
 	@see https://github.com/meshcore-dev/MeshCore/blob/main/docs/packet_format.md
 	"""
-	def __init__(self, payload: dict):
+	def __init__(self, payload: dict | None):
 
 
 		### Initialize all variables for this object
@@ -168,6 +168,10 @@ class MeshcorePacket:
 		"""
 
 		### Populate simple values from the radio
+		if payload is not None:
+			self.load_payload(payload)
+
+	def load_payload(self, payload):
 
 		if 'recv_time' in payload:
 			self.time = datetime.fromtimestamp(payload['recv_time'])
@@ -179,47 +183,79 @@ class MeshcorePacket:
 			self.raw = bytes.fromhex(payload['payload'])
 		elif 'raw_hex' in payload and payload['raw_hex']:
 			# Fallback to raw_hex with first 2 bytes stripped
-			self.raw = bytes.fromhex(payload['raw_hex'][4:])  # Skip first 2 bytes (4 hex chars)
+			self.raw = bytes.fromhex(payload['raw_hex'][4:])  
 		else:
 			logging.error('MeshcorePacket: payload data has no raw_hex nor payload')
 			return
 
 		# Extract RF data if available, these are not included in the packet but are provided by the local radio
-		self.snr = float(payload.get('snr', 0))
-		self.rssi = float(payload.get('rssi', 0))
+		if 'snr' in payload:
+			self.snr = float(payload['snr'])
+		if 'rssi' in payload:
+			self.rssi = float(payload['rssi'])
 
-	async def parse(self):
+		if 'path_hash_size' in payload and 'path' in payload and 'path_len' in payload:
+			offset = 0
+			path_size = payload['path_hash_size'] * 2
+			for i in range(payload['path_len']):
+				self.path.append(payload['path'][offset:offset + path_size])
+				offset += path_size
+
+		if 'header' in payload:
+			self.header = payload['header']
+		if 'route_type' in payload:
+			self.route_type = payload['route_type']
+		if 'payload_type' in payload:
+			self.payload_type = payload['payload_type']
+		if 'payload_ver' in payload:
+			self.payload_version = payload['payload_ver']
+		if 'path_hash_size' in payload:
+			self.path_hash_size = payload['path_hash_size']
+		if 'pkt_payload' in payload:
+			self.payload = payload['pkt_payload']
+		if 'pkt_hash' in payload:
+			self.hash = payload['pkt_hash']
+
+		# Adverts may have additional details
+		if 'adv_type' in payload:
+			self.type = payload['adv_type']
+		if 'adv_name' in payload:
+			self.name = payload['adv_name']
+		if 'adv_lat' in payload:
+			self.lat = payload['adv_lat']
+		if 'adv_lon' in payload:
+			self.lon = payload['adv_lon']
+
+		if self.raw and self.payload == b'':
+			# User payload was not set, extract it out of the raw payload.
+			# This generally doesn't happen in production, but is useful in testing from JSON files.
+			self._parse_payload()
+
+	def _parse_payload(self):
+		"""
+		Manually parse out the payload from the raw bytes.
+
+		Needs to skip the headers to jump straight to the user content.
+		:return:
+		"""
+
+		# Skip the header (1 byte), path (1 byte), and transport codes if set (0 or 4 bytes)
+		offset = 6 if self.route_type == 0 or self.route_type == 3 else 2
+
+		# Jump past the routing table (variable byte length)
+		offset += len(self.path) * self.path_hash_size
+
+		self.payload = self.raw[offset:]
+
+	async def parse(self, raw_data: bytes):
 		"""
 		Parse the raw packet payload to extract the useful data; uses the MeshcorePacketParser interally
 		:return:
 		"""
 		parser = MeshcorePacketParser()
-		data = await parser.parsePacketPayload(self.raw)
+		data = await parser.parsePacketPayload(raw_data)
 
-		offset = 0
-		path_size = data['path_hash_size'] * 2
-		for i in range(data['path_len']):
-			self.path.append(data['path'][offset:offset + path_size])
-			offset += path_size
-
-		self.header = data['header']
-		self.route_type = data['route_type']
-		self.payload_type = data['payload_type']
-		self.payload_version = data['payload_ver']
-		self.path_hash_size = data['path_hash_size']
-		self.payload = data['pkt_payload']
-		self.hash = data['pkt_hash']
-
-		# Adverts may have additional details
-		if 'adv_type' in data:
-			self.type = data['adv_type']
-		if 'adv_name' in data:
-			self.name = data['adv_name']
-		if 'adv_lat' in data:
-			self.lat = data['adv_lat']
-		if 'adv_lon' in data:
-			self.lon = data['adv_lon']
-		return data
+		self.load_payload(data)
 
 	def as_mqtt(self) -> dict:
 		"""
@@ -238,8 +274,6 @@ class MeshcorePacket:
 			route = 'U'
 
 		packet_data = {
-			"origin": '@todo', #  self.device_name or self.get_env('ORIGIN', 'MeshCore Device'),
-			"origin_id": '@todo', #  origin_id,
 			"timestamp": self.time.isoformat(),
 			"type": "PACKET",
 			"direction": "rx",

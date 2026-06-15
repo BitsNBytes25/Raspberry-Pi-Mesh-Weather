@@ -4,3 +4,4 @@
 /.idea/webServers.xml
 /src/raspberry_pi_mesh_weather.egg-info
 /.env
+/config.yaml

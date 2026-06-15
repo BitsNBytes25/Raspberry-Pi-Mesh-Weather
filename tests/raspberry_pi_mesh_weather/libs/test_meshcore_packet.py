@@ -6,7 +6,6 @@ import pytest
 @pytest.mark.asyncio
 async def test_flood_advert(mock_payload_flood_advert):
 	packet = MeshcorePacket(mock_payload_flood_advert)
-	await packet.parse()
 	assert packet.header == 17
 	assert len(packet.path) == 3
 	assert packet.path[0] == 'be'
@@ -28,7 +27,6 @@ async def test_flood_advert(mock_payload_flood_advert):
 @pytest.mark.asyncio
 async def test_direct_message(mock_payload_direct_message):
 	packet = MeshcorePacket(mock_payload_direct_message)
-	await packet.parse()
 	assert packet.hash == 173548026
 	assert packet.header == 10
 	assert len(packet.path) == 1
