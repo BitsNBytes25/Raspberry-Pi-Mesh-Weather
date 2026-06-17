@@ -23,20 +23,13 @@ import sys
 import time
 import argparse
 import logging
-from datetime import datetime, timezone
-from dotenv import load_dotenv
+from datetime import datetime
 from meshcore import MeshCore, EventType
 
 from .libs.home_assistant import push_mesh_node_to_map
-from .libs.humidity import get_humidity
 from .libs.mesh_contacts import store_contacts
 from .libs.meshcore_packet import MeshcorePacket
-from .libs.pressure import get_pressure, get_pressure_change
-from .libs.temperature import get_temperature
-from .libs.weather_forecast import WeatherForecast
-from .libs.weather_alerts import get_alerts
-from .libs.nmcli import get_bars, get_rate, get_ssid, get_frequency
-from .libs.get_local_ip import get_local_ip
+from .libs.mqtt import MqttRunner
 from .libs.config import config
 from .libs.commands import get_command
 
@@ -64,7 +57,7 @@ class WatchMeshcore:
 	def __init__(self):
 		self.radio = None
 		self.weather_channel = 1
-		self.rf_data_cache = {}
+		self.mqtt_connections = None
 
 	# --- Daily Forecast Integration ---
 	async def run_daily_forecast(self) -> bool:
@@ -153,56 +146,11 @@ class WatchMeshcore:
 
 	async def run_rx_log(self, event):
 		logging.debug('Parsing RX_LOG_DATA Event: %s', event)
-		from pprint import pprint
-		import json
 		packet = MeshcorePacket(event.payload)
-		mqtt_payload = packet.as_mqtt()
 
-		# Add the origin data based on the radio
-		mqtt_payload['origin'] = self.radio.self_info['name']
-		mqtt_payload['origin_id'] = self.radio.self_info['public_key']
-		# print(json.dumps(event.payload))
-		pprint(mqtt_payload)
-
-		payload = event.payload
-
-		if 'snr' not in payload:
-			logging.error('RX_LOG_DATA Event has no snr')
-			return
-
-		# Try to get packet data - prefer 'payload' field, fallback to 'raw_hex'
-		raw_hex = None
-
-		# First, try the 'payload' field (already stripped of framing bytes)
-		if 'payload' in payload and payload['payload']:
-			raw_hex = payload['payload']
-		# Fallback to raw_hex with first 2 bytes stripped
-		elif 'raw_hex' in payload and payload['raw_hex']:
-			raw_hex = payload['raw_hex'][4:]  # Skip first 2 bytes (4 hex chars)
-
-		if raw_hex is None:
-			logging.error('RX_LOG_DATA Event has no raw_hex')
-			return
-
-		packet_prefix = raw_hex[:32]
-
-		rf_data = {
-			'snr': payload.get('snr'),
-			'rssi': payload.get('rssi'),
-			'timestamp': time.time(),
-			'raw_hex': raw_hex,
-			'payload_length': payload.get('payload_length')
-		}
-
-		self.rf_data_cache[packet_prefix] = rf_data
-
-		# Clean up old cache entries
-		current_time = time.time()
-		timeout = 10
-		self.rf_data_cache = {
-			k: v for k, v in self.rf_data_cache.items()
-			if current_time - v['timestamp'] < timeout
-		}
+		if self.mqtt_connections is not None:
+			for connection in self.mqtt_connections:
+				connection.push_packet_event(packet)
 
 	async def run_raw_data(self, event):
 		logging.debug('Parsing RAW_DATA Event')
@@ -214,7 +162,21 @@ class WatchMeshcore:
 		from pprint import pprint
 		pprint(event.payload)
 
+	async def _setup_mqtt(self):
+		self.mqtt_connections = []
+		for opts in config.mqtt:
+			# Each mqtt is a set of options for a different broker,
+			# This allows the user to define multiple targets to publish data to.
+			runner = MqttRunner(self.radio, opts)
+			await runner.start()
+			self.mqtt_connections.append(runner)
+
+
 	async def _setup_radio(self):
+		"""
+		Set up and connect to the meshcore radio
+		:return:
+		"""
 		radio_port = config.radio.port
 		radio_baud = config.radio.baud_rate
 		logging.debug(f"Connecting Meshcore via serial port {radio_port}")
@@ -222,6 +184,10 @@ class WatchMeshcore:
 			self.radio = await MeshCore.create_serial(radio_port, radio_baud)
 		except FileNotFoundError:
 			logging.error(f"Mesh radio not found on port {radio_port}.  Please check your settings.")
+			return
+
+		if not self.radio:
+			logging.error('Could not connect to Mesh Radio')
 			return
 
 		# Some devices allow setting this via custom variables or specific commands
@@ -294,6 +260,11 @@ class WatchMeshcore:
 				# Will try to reconnect in another minute
 				await asyncio.sleep(60)
 				continue
+
+			if self.mqtt_connections is None:
+				# Try to set up MQTT brokers that are requested,
+				# This must be done after a connection to the radio is established.
+				await self._setup_mqtt()
 
 			try:
 				now = time.time()

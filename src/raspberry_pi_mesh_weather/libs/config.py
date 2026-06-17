@@ -36,6 +36,7 @@ class LocationConfig:
 	label: str = ''
 	lat: float | None = None
 	lon: float | None = None
+	iata: str = 'XYZ'
 
 
 @dataclass
@@ -53,6 +54,7 @@ class HomeAssistantConfig:
 class MqttConfig:
 	host: str = ''
 	port: int | None = None
+	topic: str = 'meshcore/{IATA}/{PUBLIC_KEY}/packets'
 	username: str | None = None
 	password: str | None = None
 	websocket: bool = False
@@ -60,6 +62,7 @@ class MqttConfig:
 	verify_tls: bool = True
 	token: bool = False
 	token_audience: str | None = None
+	client_prefix: str = 'v1'
 
 
 @dataclass

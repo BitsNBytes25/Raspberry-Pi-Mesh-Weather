@@ -16,6 +16,7 @@ display:
   # Set to true to implement a short delay for some displays
   reset_delay: true
 
+
 # Radio Configuration
 radio:
   # Currently only meshcore is supported, here for future use
@@ -25,25 +26,34 @@ radio:
   # Serial port
   port: "/dev/ttyUSB0"
 
+
+# List of hardware sensors attached to the Pi
+# Currently only BME280 is supported.
 sensors:
   - type: bme280
     port: 1
     address: 0x76
 
-# Geography & Weather
-# Obtain OpenWeatherMap API key: https://home.openweathermap.org/api_keys
+
+# Location Configuration
 location:
-  # Altitude above sea level in meters
+  # Altitude above sea level in meters (used for barometic pressure calculation)
   altitude: 250
-  # City name or short meaningful region label
+  # City name or short meaningful region label for broadcasts
   label: ""
   # Latitude of the radio, used in pulling of weather forecasts and alerts
   lat: ""
   # Longitude of the radio, used in pulling of weather forecasts and alerts
   lon: ""
+  # 3-character airport code of closest airport, used for MQTT reporting
+  iata: XYZ
+
+
+weather:
   # Set to your OpenWeatherMap API key for forecast projection support
   # Obtain this via https://home.openweathermap.org/api_keys
   openweather_api_key: ""
+
 
 # Remote Integrations
 home_assistant:
@@ -52,11 +62,13 @@ home_assistant:
   # Long-lived token for pushing data to Home Assistant
   token: ""
 
+
 # Security
 # List of radio IDs allowed for administrative tasks
 auth_radios:
-  - "12345"
-  - "67890"
+  - "123456789abc"
+  - "cba987654321"
+
 
 # MQTT Configuration
 # This structure allows for multiple brokers as requested
