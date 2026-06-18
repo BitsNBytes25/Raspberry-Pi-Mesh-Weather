@@ -6,19 +6,23 @@ from dataclasses import dataclass
 @dataclass
 class DisplayConfig:
 	enabled: bool = False
-	type: str = 'spi'
-	device: int = 0
-	port: int = 0
-	dc_gpio: int = 25
-	reset_gpio: int = 24
-	baud_rate: int = 8000000
+	type: str | None = None
+	interface: str = 'spi'
+	device: int | None = None
+	port: int | None = None
+	dc_gpio: int | None = None
+	reset_gpio: int | None = None
+	baud_rate: int | None = None
 	reset_delay: bool = True
+	rotate: int | None = None
+	width: int | None = None
+	height: int | None = None
 
 
 @dataclass
 class RadioConfig:
 	type: str = 'meshcore'
-	conn: str = 'serial'
+	interface: str = 'serial'
 	port: str = '/dev/ttyUSB0'
 	baud_rate: int = 115200
 
@@ -46,8 +50,9 @@ class WeatherConfig:
 
 @dataclass
 class HomeAssistantConfig:
-	url: str = ''
-	token: str = ''
+	url: str | None = None
+	token: str | None = None
+	icons: dict[str, str] | None = None
 
 
 @dataclass

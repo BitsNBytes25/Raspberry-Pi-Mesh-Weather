@@ -8,6 +8,8 @@ Designed to run on a Raspberry Pi, but should be compatible with any Linux-based
 The host device will listen on a "#weather" channel and respond with the current weather data.
 Direct messages over the mesh are supported too.
 
+This application also supports uploading packets to MQTT servers, for use as observation nodes.
+
 
 ## Expected Hardware
 
@@ -28,9 +30,9 @@ for details on assembling the hardware for this project and wiring schematics.
 git clone git@github.com:BitsNBytes25/Raspberry-Pi-Mesh-Weather.git
 cd Raspberry-Pi-Mesh-Weather
 
-# Copy .env.example to .env and edit as needed
-cp .env.example .env
-vim .env
+# Copy example configuration and edit as necessary
+cp config.yaml.example config.yaml
+vim config.yaml
 
 # Run the install script
 chmod +x install.sh
@@ -77,3 +79,190 @@ chmod +x install.sh
 - ☁️ A bit chilly at 12°C (54°F) and rain may be on the horizon.
 - ☀️ Perfectly comfortable at 20°C (68°F).  Go out for a nice walk.
 - 🥵 It's a hot and muggy 33°C (91°F) but feels like 35°C (95°F).  Take water & limit activity.
+
+
+## Configuration
+
+Configuration of this application is performed via `config.yaml`.
+
+
+### Display Configuration
+
+Settings for the hardware display connected to the Raspberry Pi.
+
+| Option      | Type      | Default | Description                                                                          |
+|-------------|-----------|---------|--------------------------------------------------------------------------------------|
+| enabled     | boolean   | False   | Whether the display is active.                                                       |
+| type        | string    | None    | Currently only 'sh1106' is supported                                                 | 
+| interface   | string    | 'spi'   | The display interface type. Currently, only "spi" is supported.                      |
+| device      | integer   | None    | SPI device ID (typically 0 or 1).                                                    |
+| port        | integer   | None    | SPI Port ID.                                                                         |
+| dc_gpio     | integer   | None    | Data Command GPIO pin ID.                                                            |
+| reset_gpio  | integer   | None    | Reset GPIO pin ID.                                                                   |
+| baud_rate   | integer   | None    | The communication baud rate for the display.                                         |
+| reset_delay | boolean   | True    | If true, implements a short delay during the reset sequence for compatible displays. |
+| rotate      | integer   | None    | Some displays support a rotation metric, generally 0 - 3 or 1 - 4                    |
+| width       | integer   | None    | Set the width of the display, generally in characters                                |
+| height      | integer   | None    | Set the height of the display, generally in characters                               |
+
+Example:
+
+```yaml
+display:
+  enabled: true
+  interface: spi
+  type: sh1106
+```
+
+
+### Radio Configuration
+
+Settings for the primary communication radio hardware.
+
+| Option    | Type    | Default        | Description                                       |
+|-----------|---------|----------------|---------------------------------------------------|
+| type      | string  | 'meshcore'     | The type of radio hardware (default is meshcore). |
+| interface | string  | 'serial'       | The connection method (default is serial).        |
+| port      | string  | '/dev/ttyUSB0' | The system path to the serial port.               |
+| baud_rate | integer | 115200         | The baud rate for serial communication.           |
+
+Example:
+
+```yaml
+radio:
+  type: "meshcore"      # Currently only meshcore is supported, here for future use
+  interface: "serial"   # Currently only serial is supported, here for future use
+  port: "/dev/ttyUSB0"  # Serial port
+```
+
+
+### Sensor Configuration
+
+A list of hardware sensors attached to the Pi. Each entry in the list can have the following keys:
+
+| Option    | Type     | Default  | Description                                   |
+|-----------|----------|----------|-----------------------------------------------|
+| type      | string   | Required | The model/type of sensor (e.g., bme280).      |
+| port      | integer  | None     | The port number for the sensor.               |
+| address   | integer  | None     | The hardware address (e.g., 0x76).            |
+| baud_rate | integer  | None     | The baud rate for the sensor (if applicable). |
+
+Example:
+
+```yaml
+sensors:
+  - type: bme280
+    port: 1
+    address: 0x76
+```
+
+
+### Location Configuration
+
+Geographic data used for weather forecasting and MQTT reporting.
+
+| Option   | Type     | Default | Description                                                        |
+|----------|----------|---------|--------------------------------------------------------------------|
+| altitude | integer  | None    | Altitude above sea level in meters (used for barometric pressure). |
+| label    | string   | ''      | A friendly name/region label for broadcasts.                       |
+| lat      | float    | None    | Latitude coordinate.                                               |
+| lon      | float    | None    | Longitude coordinate.                                              |
+| iata     | string   | 'XYZ'   | A 3-character airport code used for MQTT reporting.                |
+
+
+Example:
+
+```yaml
+location:
+  altitude: 250          # Altitude above sea level in meters
+  label: "cbus"              # City name or short meaningful region label
+  lat: "39.986813574660836"                # Latitude
+  lon: "-82.98096688113979"                # Longitude
+  iata: CMH
+```
+
+
+### Weather Configuration
+
+API settings for fetching weather data.
+
+| Option              | Type   | Default | Description                       |
+|---------------------|--------|---------|-----------------------------------|
+| openweather_api_key | string | ''      | Your API key from OpenWeatherMap. |
+
+Example:
+
+```yaml
+weather:
+  # Obtain OpenWeatherMap API key: https://home.openweathermap.org/api_keys
+  openweather_api_key: "1234567890abcdef"
+```
+
+
+### Home Assistant
+
+Configuration for pushing data to a Home Assistant instance.
+
+| Option  | Type   | Default | Description                                            |
+|---------|--------|---------|--------------------------------------------------------|
+| url     | string | ''      | The Home Assistant URL on your local network.          |
+| token   | string | ''      | A long-lived access token for Home Assistant.          |
+| icons   | dict   | None    | List of custom icons within Home Asssitant per device. |
+
+Example:
+
+```yaml
+home_assistant:
+  url: "http://192.168.0.20:30103"
+  token: "1234567890abcdef.fedcba0987654321"
+```
+
+To configure a custom icon for your device:
+
+```yaml
+home_assistant:
+  icons:
+    12345678: 'mdi:human-greeting-proximity'
+```
+
+
+### Security
+
+| Option      | Type         | Description                                                    |
+|-------------|--------------|----------------------------------------------------------------|
+| auth_radios | list[string] | A list of Radio IDs permitted to perform administrative tasks. |
+
+Example:
+
+```yaml
+auth_radios:          # List of radio IDs allowed for administrative tasks
+  - "123412341234"
+```
+
+### MQTT Configuration
+
+The system supports multiple MQTT brokers. Each entry in the mqtt list can contain:
+
+| Option         | Type     | Default                                | Description                                            |
+|----------------|----------|----------------------------------------|--------------------------------------------------------|
+| host           | string   | ''                                     | The hostname or IP of the MQTT broker.                 |
+| port           | integer  | None                                   | The port of the MQTT broker (default is usually 1883). |
+| topic          | string   | 'meshcore/{IATA}/{PUBLIC_KEY}/packets' | The MQTT topic. Supports placeholders like {IATA}.     |
+| username       | string   | None                                   | The username for MQTT authentication.                  |
+| password       | string   | None                                   | The password for MQTT authentication.                  |
+| websocket      | boolean  | False                                  | Whether to connect via WebSockets.                     |
+| tls            | boolean  | False                                  | Whether to use TLS encryption.                         |
+| verify_tls     | boolean  | True                                   | Whether to verify the TLS certificate.                 |
+| token          | boolean  | False                                  | Whether to use a Bearer token for authentication.      |
+| token_audience | string   | None                                   | The audience for the Bearer token.                     |
+| client_prefix  | string   | 'v1'                                   | A prefix to prepend to the client ID.                  |
+
+Example:
+
+```yaml
+mqtt:
+  - host: "192.168.0.227"
+    port: 1883
+  - host: mqtt1.okimesh.org
+    port: 1883
+```

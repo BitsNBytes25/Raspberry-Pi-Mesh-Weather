@@ -1,12 +1,6 @@
-import os
-
 import requests
 import logging
-from datetime import date, datetime
-from pprint import pprint
-
-# Cache of alerts that have been sent already; used to not send duplicate alert messages.
-ALERTS={}
+from datetime import datetime
 
 
 def parse_alert_emojis(event_name):

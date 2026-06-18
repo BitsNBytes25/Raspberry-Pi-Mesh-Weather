@@ -17,17 +17,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://gnu.org>.
 
-import os
+from raspberry_pi_mesh_weather.libs.system_state import state
 
 
 def get_temperature():
-	if os.path.exists('/tmp/temperature.txt'):
-		with open('/tmp/temperature.txt', 'r') as f:
-			return float(f.read())
-	else:
-		return None
+	return state.get('temperature')
 
 
 def set_temperature(temp):
-	with open('/tmp/temperature.txt', 'w') as f:
-		f.write(str(temp))
+	state.set_with_history('temperature', temp)

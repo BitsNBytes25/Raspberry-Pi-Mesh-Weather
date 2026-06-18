@@ -17,18 +17,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://gnu.org>.
 
-import os
+from raspberry_pi_mesh_weather.libs.system_state import state
 
 
 def get_humidity():
-	if os.path.exists('/tmp/humidity.txt'):
-		with open('/tmp/humidity.txt', 'r') as f:
-			val = f.read()
-			return None if val == '' else float(val)
-	else:
-		return None
+	return state.get('humidity')
 
 
 def set_humidity(humidity):
-	with open('/tmp/humidity.txt', 'w') as f:
-		f.write(str(humidity))
+	state.set_with_history('humidity', humidity)

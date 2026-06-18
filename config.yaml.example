@@ -1,34 +1,19 @@
+# Refer to https://github.com/BitsNBytes25/Raspberry-Pi-Mesh-Weather for full documentation.
+
 # Display Configuration
 # Configuration to control the display on the raspberry pi, if one is present.
 display:
-  enabled: true
-  # Currently only "spi" is supported
-  type: "spi"
-  # SPI device ID, either 0 or 1
-  device: 0
-  # SPI Port ID, probably 0
-  port: 0
-  # Data Command GPIO ID
-  dc_gpio: 25
-  # Reset GPIO ID
-  reset_gpio: 24
-  baud_rate: 8000000
-  # Set to true to implement a short delay for some displays
-  reset_delay: true
+  enabled: false
 
 
 # Radio Configuration
 radio:
-  # Currently only meshcore is supported, here for future use
   type: "meshcore"
-  # Currently only serial is supported, here for future use
-  conn: "serial"
-  # Serial port
+  interface: "serial"
   port: "/dev/ttyUSB0"
 
 
 # List of hardware sensors attached to the Pi
-# Currently only BME280 is supported.
 sensors:
   - type: bme280
     port: 1
@@ -37,15 +22,10 @@ sensors:
 
 # Location Configuration
 location:
-  # Altitude above sea level in meters (used for barometic pressure calculation)
   altitude: 250
-  # City name or short meaningful region label for broadcasts
   label: ""
-  # Latitude of the radio, used in pulling of weather forecasts and alerts
   lat: ""
-  # Longitude of the radio, used in pulling of weather forecasts and alerts
   lon: ""
-  # 3-character airport code of closest airport, used for MQTT reporting
   iata: XYZ
 
 
@@ -57,9 +37,7 @@ weather:
 
 # Remote Integrations
 home_assistant:
-  # Home Assistant URL on the local network
   url: ""
-  # Long-lived token for pushing data to Home Assistant
   token: ""
 
 

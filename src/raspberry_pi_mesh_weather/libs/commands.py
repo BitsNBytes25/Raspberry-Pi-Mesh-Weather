@@ -20,10 +20,12 @@
 import os
 import logging
 import functools
+import time
 from typing import Callable
 
 from .humidity import get_humidity
 from .pressure import get_pressure, get_pressure_change
+from .system_state import state
 from .temperature import get_temperature
 from .weather_forecast import WeatherForecast
 from .weather_alerts import get_alerts
@@ -410,17 +412,14 @@ def cmd_reboot(target: str | None = None):
 	"""
 	Instruct the raspberry pi to reboot.
 	"""
-	with open('/tmp/reboot', 'w') as f:
-		f.write('reboot')
-
+	state.set('reboot', time.time())
 	return CommandResponseSuccess('Reboot scheduled')
 
 
 @command('wake', direct=True, auth=True)
 def cmd_wake(target: str | None = None):
-	# Write a file to wake the device up
-	with open('/tmp/wake', 'w') as f:
-		f.write('wake')
+	# Instruct the radio to wake up its display
+	state.set('wake', time.time())
 	return CommandResponseSuccess('Device display should wake up shortly.')
 
 

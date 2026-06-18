@@ -17,35 +17,111 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://gnu.org>.
 
-import json
-import os
+from enum import Enum
+
+from raspberry_pi_mesh_weather.libs.system_state import state
 
 
-def store_contacts(contacts):
+class MeshContactType(Enum):
+	UNKNOWN = 0
 	"""
-	Store discovered contacts in a temp file
+	Unknown / other type of contact
+	"""
 
-	:param contacts:
+	CLIENT = 1
+	"""
+	MT: CLIENT, CLIENT_MUTE, CLIENT_HIDDEN, TAK
+	MC: CHAT
+	"""
+
+	REPEATER = 2
+	"""
+	MT: CLIENT_BASE, REPEATER, ROUTER, ROUTER_LATE
+	MC: REPEATER
+	"""
+
+	ROOM = 3
+	"""
+	MT: N/A
+	MC: ROOM
+	"""
+
+	SENSOR = 4
+	"""
+	MT: TRACKER, LOST_AND_FOUND, SENSOR, TAK_TRACKER
+	MC: SENSOR
+	"""
+
+
+class MeshContact:
+	def __init__(self):
+		self.public_key: str | None = None
+		self.name: str | None = None
+		self.lat: float | None = None
+		self.lon: float | None = None
+		self.last_heard: int = 0
+		self.type: MeshContactType = MeshContactType.UNKNOWN
+
+	@classmethod
+	def from_meshcore(cls, raw):
+		c = MeshContact()
+		c.public_key = raw['public_key']
+
+		if 'adv_name' in raw:
+			c.name = raw['adv_name']
+		if 'adv_lat' in raw:
+			c.lat = raw['adv_lat']
+		if 'adv_lon' in raw:
+			c.lon = raw['adv_lon']
+		if 'type' in raw:
+			if raw['type'] == 1:
+				c.type = MeshContactType.CLIENT
+			elif raw['type'] == 2:
+				c.type = MeshContactType.REPEATER
+			elif raw['type'] == 3:
+				c.type = MeshContactType.ROOM
+			elif raw['type'] == 4:
+				c.type = MeshContactType.SENSOR
+
+		if 'last_advert' in raw and 'lastmod' in raw:
+			c.last_heard = int(max(raw['last_advert'], raw['lastmod']))
+
+		return c
+
+
+def store_contact(contact: MeshContact):
+	"""
+	Store a discovered contact in the application state
+
+	:param contact:
 	:return:
 	"""
-	HA_URL = os.getenv("HA_URL")
+	contacts = state.get('contacts', [])
+	exists = False
+	for saved_contact in contacts:
+		if saved_contact.public_key == contact.public_key:
+			# Merge this contact (vs outright replacing)
+			exists = True
+			saved_contact.last_heard = max(saved_contact.last_heard, contact.last_heard)
+			if contact.lat is not None:
+				saved_contact.lat = contact.lat
+			if contact.lon is not None:
+				saved_contact.lon = contact.lon
+			break
+	if not exists:
+		contacts.append(contact)
 
-	with open('/tmp/mesh_contacts.json', 'w') as f:
-		json.dump(contacts, f)
+	state.set('contacts', contacts)
 
 
-def get_contacts():
-	if os.path.exists('/tmp/mesh_contacts.json'):
-		with open('/tmp/mesh_contacts.json', 'r') as f:
-			return json.load(f)
-	else:
-		return []
+def get_contacts() -> list[MeshContact]:
+	return state.get('contacts', [])
 
 
-def get_repeater_names():
+def get_repeater_names() -> list[str]:
 	contacts = get_contacts()
 	repeaters = []
 	for contact in contacts:
-		if contact['type'] == 2:
-			repeaters.append(contact['adv_name'])
+		if contact.type == MeshContactType.REPEATER:
+			repeaters.append(contact.name)
 	return repeaters
