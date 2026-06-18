@@ -30,7 +30,5 @@ dev = [
 ]
 
 [project.scripts]
-display = "raspberry_pi_mesh_weather.display:main"
-meshcore = "raspberry_pi_mesh_weather.watch_meshcore:main"
-sensors = "raspberry_pi_mesh_weather.watch_sensors:main"
+daemon = "raspberry_pi_mesh_weather.daemon:main"
 

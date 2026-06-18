@@ -136,7 +136,7 @@ async def daemon_main(test: bool = False):
 		sys.exit(0)
 
 
-if __name__ == "__main__":
+def main():
 	parser = argparse.ArgumentParser(description="Meshcore Watcher Application")
 
 	# Add the --debug flag
@@ -160,16 +160,7 @@ if __name__ == "__main__":
 		logging.basicConfig(level=logging.DEBUG)
 		logging.debug("Debug mode enabled")
 
-	'''
-	if args.test:
-		print('ping: ' + watcher.cmd_ping().message)
-		print('uptime: ' + watcher.cmd_uptime().message)
-		print('cpu: ' + watcher.cmd_cpu().message)
-		print('temp: ' + watcher.cmd_temp().message)
-		print('pres: ' + watcher.cmd_pressure().message)
-		print('forecast: ' + watcher.cmd_daily_forecast().message)
-		print('alerts: ' + watcher.cmd_alerts().message)
-		print('net: ' + watcher.cmd_net().message)
-		sys.exit(0)
-	'''
 	asyncio.run(daemon_main(args.test))
+
+if __name__ == "__main__":
+	main()
