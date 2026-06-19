@@ -63,6 +63,34 @@ class MeshContact:
 		self.type: MeshContactType = MeshContactType.UNKNOWN
 
 	@classmethod
+	def from_meshmastic(cls, raw):
+		c = MeshContact()
+		c.public_key = raw['user']['id'][1:]
+		c.name = raw['user']['longName']
+
+		if 'position' in raw:
+			if 'latitude' in raw['position']:
+				c.lat = raw['position']['latitude']
+			if 'longitude' in raw['position']:
+				c.lon = raw['position']['longitude']
+
+		role = raw['user']['role'] if 'role' in raw['user'] else None
+		if role is None:
+			# Probably the user's radio
+			c.type = MeshContactType.CLIENT
+		elif role in ['CLIENT', 'CLIENT_MUTE', 'CLIENT_HIDDEN', 'TAK']:
+			c.type = MeshContactType.CLIENT
+		elif role in ['CLIENT_BASE', 'REPEATER', 'ROUTER', 'ROUTER_LATE']:
+			c.type = MeshContactType.REPEATER
+		elif role in ['TRACKER', 'LOST_AND_FOUND', 'SENSOR', 'TAK_TRACKER']:
+			c.type = MeshContactType.SENSOR
+
+		if 'lastHeard' in raw:
+			c.last_heard = raw['lastHeard']
+
+		return c
+
+	@classmethod
 	def from_meshcore(cls, raw):
 		c = MeshContact()
 		c.public_key = raw['public_key']
@@ -96,13 +124,15 @@ def store_contact(contact: MeshContact):
 	:param contact:
 	:return:
 	"""
+
 	contacts = state.get('contacts', [])
 	exists = False
 	for saved_contact in contacts:
 		if saved_contact.public_key == contact.public_key:
 			# Merge this contact (vs outright replacing)
 			exists = True
-			saved_contact.last_heard = max(saved_contact.last_heard, contact.last_heard)
+			if contact.last_heard is not None:
+				saved_contact.last_heard = max(saved_contact.last_heard, contact.last_heard)
 			if contact.lat is not None:
 				saved_contact.lat = contact.lat
 			if contact.lon is not None:

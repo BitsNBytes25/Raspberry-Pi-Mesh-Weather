@@ -1,12 +1,16 @@
 # Raspberry PI Mesh Weather Sensor
 
-Integrates with MeshCore and Home Assistant for logging local weather data
+Integrates with MeshCore (or Meshtastic) and Home Assistant for logging local weather data
 and providing basic chat support on the Mesh network.
 
 Designed to run on a Raspberry Pi, but should be compatible with any Linux-based device.
 
+**Meshcore only**:
 The host device will listen on a "#weather" channel and respond with the current weather data.
 Direct messages over the mesh are supported too.
+
+**Meshtastic only**:
+The host device will listen on any configured channel for group messages.
 
 This application also supports uploading packets to MQTT servers, for use as observation nodes.
 
@@ -135,6 +139,8 @@ radio:
   port: "/dev/ttyUSB0"  # Serial port
 ```
 
+Type can be set to "meshcore" or "meshtastic" based on the type of radio you have
+
 
 ### Sensor Configuration
 
@@ -161,13 +167,14 @@ sensors:
 
 Geographic data used for weather forecasting and MQTT reporting.
 
-| Option   | Type     | Default | Description                                                        |
-|----------|----------|---------|--------------------------------------------------------------------|
-| altitude | integer  | None    | Altitude above sea level in meters (used for barometric pressure). |
-| label    | string   | ''      | A friendly name/region label for broadcasts.                       |
-| lat      | float    | None    | Latitude coordinate.                                               |
-| lon      | float    | None    | Longitude coordinate.                                              |
-| iata     | string   | 'XYZ'   | A 3-character airport code used for MQTT reporting.                |
+| Option   | Type     | Default  | Description                                                        |
+|----------|----------|----------|--------------------------------------------------------------------|
+| altitude | integer  | None     | Altitude above sea level in meters (used for barometric pressure). |
+| label    | string   | ''       | A friendly name/region label for broadcasts.                       |
+| lat      | float    | None     | Latitude coordinate.                                               |
+| lon      | float    | None     | Longitude coordinate.                                              |
+| iata     | string   | 'XYZ'    | A 3-character airport code used for MQTT reporting on Meshcore.    |
+| region   | string   | (auto)   | A 2-character country code for MQTT reporting on Meshtastic        |
 
 
 Example:
@@ -228,6 +235,8 @@ home_assistant:
 
 ### Security
 
+**only supported on Meshcore**
+
 | Option      | Type         | Description                                                    |
 |-------------|--------------|----------------------------------------------------------------|
 | auth_radios | list[string] | A list of Radio IDs permitted to perform administrative tasks. |
@@ -243,19 +252,21 @@ auth_radios:          # List of radio IDs allowed for administrative tasks
 
 The system supports multiple MQTT brokers. Each entry in the mqtt list can contain:
 
-| Option         | Type     | Default                                | Description                                            |
-|----------------|----------|----------------------------------------|--------------------------------------------------------|
-| host           | string   | ''                                     | The hostname or IP of the MQTT broker.                 |
-| port           | integer  | None                                   | The port of the MQTT broker (default is usually 1883). |
-| topic          | string   | 'meshcore/{IATA}/{PUBLIC_KEY}/packets' | The MQTT topic. Supports placeholders like {IATA}.     |
-| username       | string   | None                                   | The username for MQTT authentication.                  |
-| password       | string   | None                                   | The password for MQTT authentication.                  |
-| websocket      | boolean  | False                                  | Whether to connect via WebSockets.                     |
-| tls            | boolean  | False                                  | Whether to use TLS encryption.                         |
-| verify_tls     | boolean  | True                                   | Whether to verify the TLS certificate.                 |
-| token          | boolean  | False                                  | Whether to use a Bearer token for authentication.      |
-| token_audience | string   | None                                   | The audience for the Bearer token.                     |
-| client_prefix  | string   | 'v1'                                   | A prefix to prepend to the client ID.                  |
+| Option          | Type    | Default     | Description                                            |
+|-----------------|---------|-------------|--------------------------------------------------------|
+| host            | string  | ''          | The hostname or IP of the MQTT broker.                 |
+| port            | integer | None        | The port of the MQTT broker (default is usually 1883). |
+| usage           | string  | None        | Usage for this MQTT broker                             |
+| topic           | string  | (automatic) | The MQTT topic. Supports placeholders like {IATA}.     |
+| username        | string  | None        | The username for MQTT authentication.                  |
+| password        | string  | None        | The password for MQTT authentication.                  |
+| websocket       | boolean | False       | Whether to connect via WebSockets.                     |
+| tls             | boolean | False       | Whether to use TLS encryption.                         |
+| verify_tls      | boolean | True        | Whether to verify the TLS certificate.                 |
+| token           | boolean | False       | Whether to use a Bearer token for authentication.      |
+| token_audience  | string  | None        | The audience for the Bearer token.                     |
+| token_timeout   | int     | 3600        | Timeout for JWT expiration                             |
+| client_prefix   | string  | 'v1'        | A prefix to prepend to the client ID.                  |
 
 Example:
 
@@ -263,6 +274,12 @@ Example:
 mqtt:
   - host: "192.168.0.227"
     port: 1883
+    usage: packets
   - host: mqtt1.okimesh.org
     port: 1883
+    usage: packets
 ```
+
+Token authentication is **only supported on Meshcore**.
+
+Ensure to set `usage: packets` for MQTT servers that should receive raw packet feeds.

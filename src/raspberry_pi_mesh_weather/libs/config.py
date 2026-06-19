@@ -41,6 +41,7 @@ class LocationConfig:
 	lat: float | None = None
 	lon: float | None = None
 	iata: str = 'XYZ'
+	region: str | None = None
 
 
 @dataclass
@@ -59,7 +60,8 @@ class HomeAssistantConfig:
 class MqttConfig:
 	host: str = ''
 	port: int | None = None
-	topic: str = 'meshcore/{IATA}/{PUBLIC_KEY}/packets'
+	usage: str | None = None
+	topic: str | None = None  # = 'meshcore/{IATA}/{PUBLIC_KEY}/packets'
 	username: str | None = None
 	password: str | None = None
 	websocket: bool = False
@@ -67,6 +69,7 @@ class MqttConfig:
 	verify_tls: bool = True
 	token: bool = False
 	token_audience: str | None = None
+	token_timeout: int | None = None
 	client_prefix: str = 'v1'
 
 
@@ -90,8 +93,9 @@ class Config:
 			raw_data = yaml.safe_load(f)
 
 		sensors = []
-		for sensor in raw_data['sensors']:
-			sensors.append(SensorConfig(**sensor))
+		if 'sensors' in raw_data and isinstance(raw_data['sensors'], list):
+			for sensor in raw_data['sensors']:
+				sensors.append(SensorConfig(**sensor))
 
 		mqtts = []
 		for mqtt in raw_data['mqtt']:

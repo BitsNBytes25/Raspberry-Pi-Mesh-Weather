@@ -5,6 +5,8 @@ import time
 
 from meshcore import MeshCore, EventType
 
+from raspberry_pi_mesh_weather.auth.mqtt_auth_meshcore_jwt_token import MqttAuthMeshcoreJwtToken
+from raspberry_pi_mesh_weather.auth.mqtt_auth_simple import MqttAuthSimple
 from raspberry_pi_mesh_weather.libs.commands import get_command
 from raspberry_pi_mesh_weather.libs.config import config
 from raspberry_pi_mesh_weather.libs.mesh_contacts import MeshContact, store_contact
@@ -112,11 +114,17 @@ class MeshcoreRadio(Service):
 
 	async def run_rx_log(self, event):
 		logging.debug('Parsing RX_LOG_DATA Event: %s', event)
-		packet = MeshcorePacket(event.payload)
+		payload = MeshcorePacket(event.payload).as_mqtt()
+
+		payload['origin'] = self.radio.self_info['name']
+		payload['origin_id'] = self.radio.self_info['public_key'].upper()
+
+		# Use the default packet format for Meshtastic
+		topic = 'meshcore/{IATA}/{PUBLIC_KEY}/packets'
 
 		if self.mqtt_connections is not None:
 			for connection in self.mqtt_connections:
-				connection.push_packet_event(packet)
+				connection.push_data(topic, payload)
 
 	async def run_raw_data(self, event):
 		logging.debug('Parsing RAW_DATA Event')
@@ -133,9 +141,21 @@ class MeshcoreRadio(Service):
 		for opts in config.mqtt:
 			# Each mqtt is a set of options for a different broker,
 			# This allows the user to define multiple targets to publish data to.
-			runner = MqttRunner(self.radio, opts)
-			await runner.start()
-			self.mqtt_connections.append(runner)
+			if opts.usage == 'packets':
+				# only register MQTT servers that are for packet captures
+				runner = MqttRunner(opts)
+
+				if opts.token:
+					auth = MqttAuthMeshcoreJwtToken(opts, self.radio)
+				elif opts.username:
+					auth = MqttAuthSimple(opts)
+				else:
+					auth = None
+
+				runner.set_auth(auth)
+				runner.public_key = self.radio.self_info['public_key'].upper()
+				await runner.start()
+				self.mqtt_connections.append(runner)
 
 	async def _setup_radio(self):
 		"""

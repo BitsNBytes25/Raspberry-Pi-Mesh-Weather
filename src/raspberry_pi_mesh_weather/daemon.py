@@ -27,6 +27,7 @@ from raspberry_pi_mesh_weather.libs.config import config
 from raspberry_pi_mesh_weather.services.displays.sh1106_display import Sh1106Display
 from raspberry_pi_mesh_weather.services.misc.home_assistant import HomeAssistant
 from raspberry_pi_mesh_weather.services.radios.meshcore_radio import MeshcoreRadio
+from raspberry_pi_mesh_weather.services.radios.meshtastic_radio import MeshtasticRadio
 from raspberry_pi_mesh_weather.services.sensors.bme280_sensor import Bme280Sensor
 
 
@@ -60,6 +61,18 @@ async def daemon_main(test: bool = False):
 	# Load the appropriate radio
 	if config.radio.type == 'meshcore':
 		radio = MeshcoreRadio()
+		logging.debug('Loading %s', radio.get_name())
+		loadable = await radio.load()
+		if loadable:
+			if test:
+				await radio.test()
+			else:
+				services.append(radio)
+				tasks.append(radio.start())
+		else:
+			logging.error('%s could not be loaded!', radio.get_name())
+	elif config.radio.type == 'meshtastic':
+		radio = MeshtasticRadio()
 		logging.debug('Loading %s', radio.get_name())
 		loadable = await radio.load()
 		if loadable:

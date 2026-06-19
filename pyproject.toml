@@ -6,6 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
     "luma.oled>=3.15.0",
     "meshcore>=2.3.7",
+    "meshtastic>=2.7.9",
     "paho-mqtt>=2.1.0",
     "pimoroni-bme280>=1.0.0",
     "pyjwt>=2.13.0",

@@ -55,7 +55,7 @@ mqtt:
     port: 1883
     user: "username"
     password: "password"
+    usage: packets
   - host: "backup.example.com"
     port: 1883
-    user: "username"
-    password: "password"
+    usage: packets
