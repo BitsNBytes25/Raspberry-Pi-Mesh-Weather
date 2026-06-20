@@ -1,7 +1,7 @@
 [project]
 name = "raspberry-pi-mesh-weather"
-version = "0.1.0"
-description = "Add your description here"
+version = "1.0.0"
+description = "Application to provide additional functionality on Mesh networks"
 requires-python = ">=3.12"
 dependencies = [
     "paho-mqtt>=2.1.0",

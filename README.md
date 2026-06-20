@@ -3,7 +3,47 @@
 Integrates with MeshCore (or Meshtastic) and Home Assistant for logging local weather data
 and providing basic chat support on the Mesh network.
 
-Designed to run on a Raspberry Pi, but should be compatible with any Linux-based device.
+Designed to run on a Raspberry Pi, but can run on any Linux-based device.
+
+**Currently only serial/USB connected radios are supported.**
+This may be changed in the future to include support for Bluetooth, but for the moment your radio must be directly connected.
+
+## Feature Overview
+
+All features are optional and can be enabled or disabled via the configuration.
+**Important**: when adding or removing enabled modules, it is recommended to re-run `install.sh`
+to rebuild the dependencies for any changed feature.
+
+### Environmental Sensor Tracking
+
+Pulls temperature, pressure, and humidity from locally-attached sensors.
+
+**Supports**
+
+* BME280
+
+### Display
+
+Supports displaying basic information to an attached OLED display; useful for diagnostic work.
+Send the message "wake" to the device to wake up the display for 2 minutes.
+
+**Supports**
+
+* Microcenter OLED Display (345785)
+
+### Home Assistant
+
+Supports uploading sensor metrics and discovered radios to a local Home Assistant installation.
+
+### Mesh Radio
+
+Supports interacting with a mesh network for sending data, forecasts, and alerts,
+and receiving commands and queries.
+
+**Supports**
+
+* MeshCore
+* Meshtastic
 
 **Meshcore only**:
 The host device will listen on a "#weather" channel and respond with the current weather data.
@@ -12,20 +52,24 @@ Direct messages over the mesh are supported too.
 **Meshtastic only**:
 The host device will listen on any configured channel for group messages.
 
-This application also supports uploading packets to MQTT servers, for use as observation nodes.
+### MQTT Packet Capture
+
+Supports acting as a mesh observer by uploading raw packets to MQTT servers.
+This allows logging and visualizing of mesh traffic even if not supported by the radio.
+
+Multiple MQTT brokers can be configured, each with their own authentication.
 
 
-## Expected Hardware
-
-* Raspberry Pi (Zero W or better)
-* BME280 Temperature/Humidity/Pressure Sensor
-* MeshCore-compatible USB companion device
-* Microcenter 1.3" OLED Display (345785)
+## Hardware
 
 Refer to our [build guide](https://bitsnbytes.dev/posts/2026-05/pi-mesh-weather-sensor.html)
 for details on assembling the hardware for this project and wiring schematics.
 
 ![Assembled Hardware](docs/media/raspberry-pi-mesh-radio.webp)
+
+An even simpler option is just to attach a Meshtastic or MeshCore radio (in USB companion mode)
+to the USB of a Raspberry Pi and call it a day.
+The Pi will still support pulling forecasts and alerts from online sources for broadcast to the mesh.
 
 
 ## Installation
