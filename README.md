@@ -43,6 +43,18 @@ chmod +x install.sh
 ./install.sh
 ```
 
+### Installation on 32-bit OS
+
+Raspberry Pi 2 may ship with a 32-bit operating system; in that case you may need to manually install additional depdendencies.
+
+```bash
+# Install a few dependencies for building libraries not included anymore
+sudo apt install -y python3-dev libjpeg-dev zlib1g-dev libfreetype6-dev
+
+# One of the dependencies for meshtastic is rust; include that from source.
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
 ## Supported Commands (Weather channel)
 
 * !temperature - Get the current temperature

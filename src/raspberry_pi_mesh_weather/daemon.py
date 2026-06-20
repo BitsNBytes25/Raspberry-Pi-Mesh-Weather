@@ -24,11 +24,6 @@ import logging
 
 from raspberry_pi_mesh_weather.libs.commands import get_command
 from raspberry_pi_mesh_weather.libs.config import config
-from raspberry_pi_mesh_weather.services.displays.sh1106_display import Sh1106Display
-from raspberry_pi_mesh_weather.services.misc.home_assistant import HomeAssistant
-from raspberry_pi_mesh_weather.services.radios.meshcore_radio import MeshcoreRadio
-from raspberry_pi_mesh_weather.services.radios.meshtastic_radio import MeshtasticRadio
-from raspberry_pi_mesh_weather.services.sensors.bme280_sensor import Bme280Sensor
 
 
 async def daemon_main(test: bool = False):
@@ -44,6 +39,7 @@ async def daemon_main(test: bool = False):
 	# Load sensors
 	for sensor_opts in config.sensors:
 		if sensor_opts.type == 'bme280':
+			from raspberry_pi_mesh_weather.services.sensors.bme280_sensor import Bme280Sensor
 			sensor = Bme280Sensor(sensor_opts)
 			logging.debug('Loading %s', sensor.get_name())
 			loadable = await sensor.load()
@@ -60,6 +56,7 @@ async def daemon_main(test: bool = False):
 
 	# Load the appropriate radio
 	if config.radio.type == 'meshcore':
+		from raspberry_pi_mesh_weather.services.radios.meshcore_radio import MeshcoreRadio
 		radio = MeshcoreRadio()
 		logging.debug('Loading %s', radio.get_name())
 		loadable = await radio.load()
@@ -72,6 +69,7 @@ async def daemon_main(test: bool = False):
 		else:
 			logging.error('%s could not be loaded!', radio.get_name())
 	elif config.radio.type == 'meshtastic':
+		from raspberry_pi_mesh_weather.services.radios.meshtastic_radio import MeshtasticRadio
 		radio = MeshtasticRadio()
 		logging.debug('Loading %s', radio.get_name())
 		loadable = await radio.load()
@@ -88,6 +86,7 @@ async def daemon_main(test: bool = False):
 
 	# Load Home Assistant integration if requested
 	if config.home_assistant.url:
+		from raspberry_pi_mesh_weather.services.misc.home_assistant import HomeAssistant
 		ha = HomeAssistant()
 		logging.debug('Loading %s', ha.get_name())
 		loadable = await ha.load()
@@ -103,6 +102,7 @@ async def daemon_main(test: bool = False):
 	# Load the display if one is enabled
 	if config.display.enabled:
 		if config.display.type == 'sh1106':
+			from raspberry_pi_mesh_weather.services.displays.sh1106_display import Sh1106Display
 			display = Sh1106Display()
 			logging.debug('Loading %s', display.get_name())
 			loadable = await display.load()
