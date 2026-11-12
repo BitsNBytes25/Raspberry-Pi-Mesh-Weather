@@ -16,11 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`forecast` command** — Now shows a rolling forecast of the next entries in chronological order (starting from now) instead of a fixed "today" summary, so an evening call starts with the current evening and spills into tomorrow. `get_daily_forecast` returns a list of normalized entries (dt/hour/date/temp/feels_like/humidity/pop/description/icon); the narrative `get_description` and its period-window logic were removed. Entries are 3-hour buckets, so each is labelled by its actual clock time (e.g. "6:00 PM"), with a "Tomorrow" prefix for entries on the next day.
 - **`all` command** output reformatted to be cleaner
 - **`temp` command** — Fixed a malformed oppressive-heat message (missing closing parenthesis) and a missing period at the end of the >29°C storm warning.
 - **`temp` command** — Fixed the 18–24°C band falling through to a bare temperature readout when humidity is below 30%; added dry-air descriptions for that case instead.
 - **`temp` command** — Switched from truncated (`int`) to rounded values for display and band selection so borderline temperatures (e.g. 24.9°C) get the correct description.
 - **`temp` command** — Added a muggy (high-humidity) description to the 24–29°C band for temperatures where the heat index is not yet in the "limit activity" range.
+- Cleanup output when running `daemon --test` to better view raw command responses
 
 ## [1.0.0] - 2026-06-20
 

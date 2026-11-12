@@ -1,4 +1,6 @@
 import pytest
+from datetime import date
+
 from raspberry_pi_mesh_weather.libs import commands
 
 
@@ -296,3 +298,107 @@ def test_heat_index_28_9c_90rh():
 
 def test_heat_index_35c_75rh():
 	assert commands.get_heat_index(35.0, 75.0) == pytest.approx(53.33, abs=0.01)
+
+
+# --- forecast --------------------------------------------------------
+
+
+def _patch_forecast_cmd(mocker, entries, label='cbus', api='test-api-key', today=None):
+	"""
+	Invoke cmd_daily_forecast with a mocked WeatherForecast that returns `entries`.
+	Patches config, WeatherForecast, and (optionally) date.today.
+	"""
+	config = mocker.patch.object(commands, 'config')
+	config.weather.openweather_api_key = api
+	config.location.lat = 39.96
+	config.location.lon = -83.0
+	config.location.label = label
+	weather = mocker.patch.object(commands, 'WeatherForecast')
+	weather.return_value.get_daily_forecast.return_value = entries
+	if today is not None:
+		class _FakeDate(date):
+			@classmethod
+			def today(cls):
+				return today
+		mocker.patch.object(commands, 'date', _FakeDate)
+	return commands.cmd_daily_forecast(None)
+
+
+def test_forecast_command_evening_spills_into_tomorrow(mocker):
+	entries = [
+		{'hour': 21, 'date': '2026-11-13', 'temp': 9.54, 'icon': '🌧️', 'description': 'light rain'},
+		{'hour': 0, 'date': '2026-11-14', 'temp': 7.40, 'icon': '🌧️', 'description': 'light rain'},
+		{'hour': 3, 'date': '2026-11-14', 'temp': 4.81, 'icon': '☁️', 'description': 'overcast clouds'},
+		{'hour': 6, 'date': '2026-11-14', 'temp': 4.82, 'icon': '🌧️', 'description': 'light rain'},
+		{'hour': 9, 'date': '2026-11-14', 'temp': 4.77, 'icon': '🌧️', 'description': 'light rain'},
+	]
+	result = _patch_forecast_cmd(mocker, entries, today=date(2026, 11, 13))
+
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == (
+		'Forecast for cbus:\n'
+		'🌧️  9 PM: light rain, 9.5°C (49°F)\n'
+		'🌧️  12 AM: light rain, 7.4°C (45°F)\n'
+		'☁️  3 AM: overcast clouds, 4.8°C (41°F)\n'
+		'🌧️  6 AM: light rain, 4.8°C (41°F)\n'
+		'🌧️  9 AM: light rain, 4.8°C (41°F)\n'
+		'Low/High: 5°C / 10°C (41°F / 50°F)'
+	)
+
+
+def test_forecast_command_morning_all_today(mocker):
+	entries = [
+		{'hour': 9, 'date': '2026-11-13', 'temp': 9.54, 'icon': '🌧️', 'description': 'light rain'},
+		{'hour': 12, 'date': '2026-11-13', 'temp': 3.98, 'icon': '☁️', 'description': 'broken clouds'},
+		{'hour': 15, 'date': '2026-11-13', 'temp': 10.08, 'icon': '☁️', 'description': 'broken clouds'},
+	]
+	result = _patch_forecast_cmd(mocker, entries, today=date(2026, 11, 13))
+
+	assert result.success is True
+	assert result.message == (
+		'Forecast for cbus:\n'
+		'🌧️  9 AM: light rain, 9.5°C (49°F)\n'
+		'☁️  12 PM: broken clouds, 4.0°C (39°F)\n'
+		'☁️  3 PM: broken clouds, 10.1°C (50°F)\n'
+		'Low/High: 4°C / 10°C (39°F / 50°F)'
+	)
+
+
+def test_forecast_command_missing_label_uses_plain_header(mocker):
+	entries = [{'hour': 9, 'date': '2026-11-13', 'temp': 9.54, 'icon': '☀️', 'description': 'clear sky'}]
+	result = _patch_forecast_cmd(mocker, entries, label='', today=date(2026, 11, 13))
+
+	assert result.success is True
+	assert result.message == (
+		'Forecast:\n'
+		'☀️  9 AM: clear sky, 9.5°C (49°F)\n'
+		'Low/High: 10°C / 10°C (50°F / 50°F)'
+	)
+
+
+def test_forecast_command_no_api_key(mocker):
+	config = mocker.patch.object(commands, 'config')
+	config.weather.openweather_api_key = ''
+	config.location.lat = 39.96
+	config.location.lon = -83.0
+	config.location.label = 'cbus'
+	result = commands.cmd_daily_forecast(None)
+
+	assert result.success is False
+	assert result.has_data is False
+	assert result.message == 'No API set for OpenWeatherMap.org, unable to fetch forecast data.'
+
+
+def test_forecast_command_empty_entries(mocker):
+	config = mocker.patch.object(commands, 'config')
+	config.weather.openweather_api_key = 'test-api-key'
+	config.location.lat = 39.96
+	config.location.lon = -83.0
+	config.location.label = 'cbus'
+	mocker.patch.object(commands, 'WeatherForecast').return_value.get_daily_forecast.return_value = []
+	result = commands.cmd_daily_forecast(None)
+
+	assert result.success is False
+	assert result.has_data is False
+	assert result.message == 'Failed to retrieve forecast data.'

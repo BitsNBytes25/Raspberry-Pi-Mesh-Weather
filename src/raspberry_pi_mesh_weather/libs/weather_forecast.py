@@ -1,6 +1,6 @@
 import requests
 import logging
-from datetime import date, datetime
+from datetime import datetime
 from .config import config
 
 
@@ -35,55 +35,20 @@ class WeatherForecast:
 			logging.error(f"Error fetching weather data from OpenWeatherMap: {e}")
 			return {}
 
-	def get_description(self, breakdown) -> str:
+	def get_daily_forecast(self, count: int = 8) -> list[dict]:
 		"""
-		Get a friendly description of an overview of the weather conditions throughout the day
+		Fetches the next `count` forecast entries (a rolling window starting from
+		now) and returns them normalized in chronological order, regardless of the
+		time of day.
 
-		:param breakdown:
-		:return:
-		"""
+		This always returns the *next* periods, so calling it in the evening
+		yields the current evening and spills into tomorrow, while calling it in
+		the morning yields the morning, afternoon and evening of the current day.
 
-		morning = None
-		morning_i = None
-		noon = None
-		noon_i = None
-		afternoon = None
-		afternoon_i = None
-		for item in breakdown:
-			if 7 <= item['hour'] < 11:
-				morning_i = item['icon']
-				morning = item['description']
-			elif 11 <= item['hour'] < 13:
-				noon_i = item['icon']
-				noon = item['description']
-			elif 15 <= item['hour'] < 19:
-				afternoon_i = item['icon']
-				afternoon = item['description']
+		Each entry is a dict with the keys: dt, hour, date, temp, feels_like,
+		humidity, pop, description and icon.
 
-		if morning and noon and afternoon:
-			if morning == noon == afternoon:
-				return f"{morning_i}  {morning} all day"
-			if morning == noon:
-				return f"{morning_i}  {morning}\nuntil afternoon then\n{afternoon_i}  {afternoon}"
-			if noon == afternoon:
-				return f"{morning_i}  {morning}\nthen around noon\n{afternoon_i}  {afternoon}"
-
-		parts = []
-		if morning:
-			parts.append(f"{morning_i}  early {morning}")
-		if noon:
-			parts.append(f"{noon_i}  noon {noon}")
-		if afternoon:
-			parts.append(f"{afternoon_i}  late {afternoon}")
-
-		return '\n'.join(parts)
-
-	def get_daily_forecast(self) -> dict:
-		"""
-		Retrieves and processes the forecast for a single day (today).
-
-		Returns:
-			A dictionary containing today's summarized forecast data, or an empty dict on failure.
+		:return: the list of normalized entries, or [] on fetch/parse failure.
 		"""
 		data = self._fetch_data(
 			'/2.5/forecast',
@@ -92,21 +57,13 @@ class WeatherForecast:
 				'lon': self.lon,
 				'appid': self.api_key,
 				'units': 'metric',  # Get temperature in Celsius
-				'cnt': 8  # Limit to 8 responses; this gives a 24-hour span.
+				'cnt': count,  # Limit to the next `count` (3-hourly) periods.
 			}
 		)
 
-		if not data or 'list' not in data:
+		if not data or 'list' not in data or not data['list']:
 			logging.error("Error: No forecast data found in the response.")
-			return {}
-
-		# Find the entry for today (or the first one if we assume the API returns today first)
-		today_forecasts = [item for item in data['list'] if date.fromtimestamp(item['dt']) == date.today()]
-
-		if not today_forecasts:
-			# Fallback: If no exact match, take the very first entry as 'today's' forecast
-			logging.error("Warning: No exact daily match found for today. Using the first available forecast.")
-			today_forecasts = [data['list'][0]]
+			return []
 
 		# Include pretty UTF-8 emoticons for the various weather codes provided by OpenWeatherMap
 		weather_emojis = {
@@ -122,29 +79,20 @@ class WeatherForecast:
 		}
 
 		breakdown = []
-		for item in today_forecasts:
+		# The API already returns the next periods in order; sort defensively so the
+		# result is always chronological.
+		for item in sorted(data['list'], key=lambda entry: entry['dt']):
+			local = datetime.fromtimestamp(item['dt'])
 			breakdown.append({
-				'hour': datetime.fromtimestamp(item['dt']).hour,
+				'dt': item['dt'],
+				'hour': local.hour,
+				'date': local.strftime('%Y-%m-%d'),
 				'temp': item['main']['temp'],
+				'feels_like': item['main']['feels_like'],
 				'humidity': item['main']['humidity'],
-				'pop': item['pop'],  # Probability of Precipitation
+				'pop': item['pop'],
 				'description': item['weather'][0]['description'],
 				'icon': weather_emojis.get(item['weather'][0]['icon'], ''),
 			})
 
-		# pprint(breakdown)
-
-		# Calculate metrics
-		high_temp = round(max(item['temp'] for item in breakdown))
-		low_temp = round(min(item['temp'] for item in breakdown))
-		avg_humidity = round(sum(item['humidity'] for item in breakdown) / len(breakdown))
-		general_outlook = self.get_description(breakdown)
-
-		# Compile the result
-		return {
-			"date": date.today().strftime("%Y-%m-%d"),
-			"high_temp": high_temp,
-			"low_temp": low_temp,
-			"avg_humidity": avg_humidity,
-			"general_outlook": general_outlook,
-		}
+		return breakdown

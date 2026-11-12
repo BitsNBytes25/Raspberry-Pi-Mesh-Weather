@@ -25,3 +25,11 @@ def columbus_afternoon():
 	fixture = Path(__file__).parent / 'fixtures' / 'api_openweathermap_org' / 'columbus_afternoon.json'
 	with open(fixture, 'r') as f:
 		return json.load(f)
+
+
+@pytest.fixture
+def columbus_morning():
+	# Load a good OpenWeatherMap forecast response for Columbus, OH (morning window)
+	fixture = Path(__file__).parent / 'fixtures' / 'api_openweathermap_org' / 'columbus_morning.json'
+	with open(fixture, 'r') as f:
+		return json.load(f)

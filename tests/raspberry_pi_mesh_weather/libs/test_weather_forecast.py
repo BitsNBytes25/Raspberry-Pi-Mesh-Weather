@@ -1,37 +1,22 @@
-from datetime import date, datetime, timezone
-
 import pytest
 import requests
+
+from datetime import datetime, timezone
 
 from raspberry_pi_mesh_weather.libs import weather_forecast
 from raspberry_pi_mesh_weather.libs.weather_forecast import WeatherForecast
 
 
-# All fixture timestamps fall on this UTC date; the fixture's dt_txt fields are
-# in UTC, so pin the "hour" used for the morning/noon/afternoon windows to UTC
-# so the tests are independent of the machine's timezone.
-FAKE_TODAY = date(2026, 11, 13)
+# The code computes hour/date from datetime.fromtimestamp; pin it to UTC so the
+# "hour" and "date" values are deterministic and independent of the machine's
+# timezone.
 _UTC = timezone.utc
 
 
-def _patch_time(mocker, today, entry_date=None):
+def _patch_time(mocker):
 	"""
-	Pin the date classes used by the weather_forecast module.
-
-	:param today: value returned by date.today()
-	:param entry_date: value returned by date.fromtimestamp; every entry counts as
-	"today" if not provided.
+	Pin the datetime class used by the weather_forecast module to UTC.
 	"""
-
-	class _FakeDate(date):
-
-		@classmethod
-		def fromtimestamp(cls, ts, *args, **kwargs):
-			return entry_date or today
-
-		@classmethod
-		def today(cls):
-			return today
 
 	class _FakeDatetime(datetime):
 
@@ -39,7 +24,6 @@ def _patch_time(mocker, today, entry_date=None):
 		def fromtimestamp(cls, ts, *args, **kwargs):
 			return datetime.fromtimestamp(ts, tz=_UTC)
 
-	mocker.patch.object(weather_forecast, 'date', _FakeDate)
 	mocker.patch.object(weather_forecast, 'datetime', _FakeDatetime)
 
 
@@ -69,11 +53,6 @@ def _build_forecast(mocker, api_key='test-api-key', lat=39.96, lon=-83.0):
 @pytest.fixture
 def forecast(mocker):
 	return _build_forecast(mocker)
-
-
-@pytest.fixture
-def fixed_time(mocker):
-	_patch_time(mocker, today=FAKE_TODAY)
 
 
 # --- init -------------------------------------------------------------
@@ -128,130 +107,57 @@ def test_fetch_data_returns_empty_on_http_error(forecast, mocker):
 # --- get_daily_forecast ------------------------------------------------
 
 
-def test_get_daily_forecast_returns_summary(columbus_afternoon, fixed_time,
-											forecast, mocker):
+def test_get_daily_forecast_returns_next_entries_in_the_evening(columbus_afternoon,
+																forecast, mocker):
+	_patch_time(mocker)
 	_patch_request(mocker, columbus_afternoon)
 	result = forecast.get_daily_forecast()
-	assert result['date'] == '2026-11-13'
-	assert result['high_temp'] == 10
-	assert result['low_temp'] == 4
-	assert result['avg_humidity'] == 85
-	assert result['general_outlook'] == (
-		'🌧️  early light rain\n'
-		'☁️  noon broken clouds\n'
-		'🌦️  late light rain'
-	)
+
+	assert len(result) == 8
+	# chronological by dt
+	assert [e['dt'] for e in result] == sorted([e['dt'] for e in result])
+	# the rolling window (UTC hours) starts on the evening and spills into the next day
+	assert [e['hour'] for e in result] == [21, 0, 3, 6, 9, 12, 15, 18]
+	assert result[0]['date'] != result[1]['date']
+	assert result[0]['description'] == 'light rain'
+	assert result[0]['icon'] == chr(0x1F326) + chr(0xFE0F)  # 🌦️
+	assert result[0]['temp'] == 9.54
+	assert result[0]['feels_like'] == 7.2
+	assert result[0]['humidity'] == 81
+	assert result[0]['pop'] == 1
+
+	# every entry exposes the normalized fields
+	assert set(result[0].keys()) == {
+		'dt', 'hour', 'date', 'temp', 'feels_like', 'humidity', 'pop',
+		'description', 'icon',
+	}
 
 
-def test_get_daily_forecast_falls_back_to_first_entry(columbus_afternoon,
-														forecast, mocker):
-	_patch_time(mocker, today=FAKE_TODAY, entry_date=date(2026, 1, 1))
-	_patch_request(mocker, columbus_afternoon)
+def test_get_daily_forecast_returns_next_entries_in_the_morning(columbus_morning,
+																forecast, mocker):
+	_patch_time(mocker)
+	_patch_request(mocker, columbus_morning)
 	result = forecast.get_daily_forecast()
-	assert result['date'] == '2026-11-13'
-	assert result['high_temp'] == 10
-	assert result['low_temp'] == 10
-	assert result['avg_humidity'] == 81
-	assert result['general_outlook'] == ''
+
+	assert len(result) == 8
+	# the rolling window (UTC hours) starts in the morning and spans today + next day
+	assert [e['hour'] for e in result] == [9, 12, 15, 18, 21, 0, 3, 6]
+	assert result[0]['hour'] == 9
+	assert result[0]['description'] == 'light rain'
+	assert result[0]['icon'] == chr(0x1F326) + chr(0xFE0F)  # 🌦️
+	assert len({e['date'] for e in result}) == 2
 
 
 def test_get_daily_forecast_returns_empty_on_request_failure(forecast, mocker):
 	_patch_request_failure(mocker)
-	assert forecast.get_daily_forecast() == {}
+	assert forecast.get_daily_forecast() == []
 
 
 def test_get_daily_forecast_returns_empty_on_malformed_response(forecast, mocker):
 	_patch_request(mocker, {'cod': '401'})
-	assert forecast.get_daily_forecast() == {}
+	assert forecast.get_daily_forecast() == []
 
 
-# --- get_description ---------------------------------------------------
-
-
-def test_get_description_same_all_day(forecast):
-	breakdown = [
-		{'hour': 8, 'icon': '☀️', 'description': 'clear sky'},
-		{'hour': 12, 'icon': '☀️', 'description': 'clear sky'},
-		{'hour': 16, 'icon': '☀️', 'description': 'clear sky'},
-	]
-	assert forecast.get_description(breakdown) == '☀️  clear sky all day'
-
-
-def test_get_description_same_morning_and_noon(forecast):
-	breakdown = [
-		{'hour': 8, 'icon': '☀️', 'description': 'clear sky'},
-		{'hour': 12, 'icon': '☀️', 'description': 'clear sky'},
-		{'hour': 16, 'icon': '🌧️', 'description': 'light rain'},
-	]
-	assert forecast.get_description(breakdown) == (
-		'☀️  clear sky\nuntil afternoon then\n🌧️  light rain'
-	)
-
-
-def test_get_description_same_noon_and_afternoon(forecast):
-	breakdown = [
-		{'hour': 8, 'icon': '🌧️', 'description': 'light rain'},
-		{'hour': 12, 'icon': '☁️', 'description': 'broken clouds'},
-		{'hour': 16, 'icon': '☁️', 'description': 'broken clouds'},
-	]
-	assert forecast.get_description(breakdown) == (
-		'🌧️  light rain\nthen around noon\n☁️  broken clouds'
-	)
-
-
-def test_get_description_all_different(forecast):
-	breakdown = [
-		{'hour': 8, 'icon': '☀️', 'description': 'clear sky'},
-		{'hour': 12, 'icon': '☁️', 'description': 'broken clouds'},
-		{'hour': 16, 'icon': '🌧️', 'description': 'light rain'},
-	]
-	assert forecast.get_description(breakdown) == (
-		'☀️  early clear sky\n'
-		'☁️  noon broken clouds\n'
-		'🌧️  late light rain'
-	)
-
-
-def test_get_description_missing_periods(forecast):
-	breakdown = [
-		{'hour': 8, 'icon': '☀️', 'description': 'clear sky'},
-		{'hour': 16, 'icon': '🌧️', 'description': 'light rain'},
-	]
-	assert forecast.get_description(breakdown) == (
-		'☀️  early clear sky\n🌧️  late light rain'
-	)
-
-
-def test_get_description_no_matching_periods(forecast):
-	assert forecast.get_description([
-		{'hour': 2, 'icon': '🌙', 'description': 'clear night'},
-	]) == ''
-
-
-def test_get_description_window_boundaries(forecast):
-	# Morning: 7 <= h < 11; noon: 11 <= h < 13; afternoon: 15 <= h < 19.
-	breakdown = [
-		{'hour': 7, 'icon': '☀️', 'description': 'clear sky'},
-		{'hour': 11, 'icon': '🌧️', 'description': 'light rain'},
-		{'hour': 15, 'icon': '⛈️', 'description': 'thunderstorms'},
-	]
-	assert forecast.get_description(breakdown) == (
-		'☀️  early clear sky\n'
-		'🌧️  noon light rain\n'
-		'⛈️  late thunderstorms'
-	)
-
-
-def test_get_description_last_match_wins_in_window(forecast):
-	breakdown = [
-		{'hour': 8, 'icon': '☀️', 'description': 'clear sky'},
-		{'hour': 10, 'icon': '🌧️', 'description': 'light rain'},
-		{'hour': 12, 'icon': '☁️', 'description': 'broken clouds'},
-		{'hour': 12, 'icon': '☁️', 'description': 'overcast clouds'},
-		{'hour': 16, 'icon': '⛅', 'description': 'few clouds'},
-	]
-	assert forecast.get_description(breakdown) == (
-		'🌧️  early light rain\n'
-		'☁️  noon overcast clouds\n'
-		'⛅  late few clouds'
-	)
+def test_get_daily_forecast_returns_empty_on_empty_list(forecast, mocker):
+	_patch_request(mocker, {'cod': '200', 'list': []})
+	assert forecast.get_daily_forecast() == []

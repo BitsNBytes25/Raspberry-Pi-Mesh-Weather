@@ -21,6 +21,7 @@ import os
 import logging
 import functools
 import time
+from datetime import date
 from typing import Callable
 
 from .humidity import get_humidity
@@ -187,6 +188,7 @@ def cmd_uptime(target: str | None = None) -> CommandResponse:
 def cmd_cpu(target: str | None = None) -> CommandResponse:
 	temp = None
 	try:
+		# Default location of CPU thermal probe for Raspberry Pis
 		with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
 			temp = float(f.read()) / 1000
 	except FileNotFoundError:
@@ -372,10 +374,29 @@ def cmd_all_sensors(target: str | None = None) -> CommandResponse:
 		return CommandResponseNoData('Sorry, but no sensor data is available')
 
 
+def _time_label(hour: int) -> str:
+	"""
+	Format a 24-hour time to a human readable format.
+
+	'0' => 12 AM
+	'11' => 11 AM
+	'20' => 8 PM
+
+	:param hour: 24-hour time
+	"""
+	period = "AM" if hour < 12 else "PM"
+	hour12 = hour % 12 or 12
+	return f"{hour12} {period}"
+
+
 @command('forecast', direct=True, group=True)
 def cmd_daily_forecast(target: str | None = None) -> CommandResponse:
 	"""
-	Fetches the daily weather forecast and broadcasts it over the mesh network.
+	Fetches the next forecast entries and broadcasts them over the mesh network.
+
+	The next few entries are shown in chronological order, so an evening call
+	starts with the current evening and spills into tomorrow, while a morning
+	call shows the morning, afternoon and evening of the current day.
 	"""
 	api = config.weather.openweather_api_key
 	lat = config.location.lat
@@ -395,26 +416,37 @@ def cmd_daily_forecast(target: str | None = None) -> CommandResponse:
 		return CommandResponseError('No longitude set, unable to pull forecast data.')
 
 	if label == '':
-		header = 'Daily Forecast'
+		header = 'Forecast'
 	else:
-		header = f'Today for {label}'
+		header = f'Forecast for {label}'
 
 	logging.debug('--- Running Daily Weather Forecast Fetch ---')
 	try:
 		# Initialize the weather client (it will read OPENWEATHERMAP_API_KEY)
 		weather_client = WeatherForecast()
-		forecast = weather_client.get_daily_forecast()
+		entries = weather_client.get_daily_forecast(5)
 
-		if not forecast:
+		if not entries:
 			print('Weather Forecast: Failed to retrieve data.')
 			return CommandResponseError('Failed to retrieve forecast data.')
 
-		low_f = round(forecast['low_temp'] * 1.8 + 32, 0)
-		high_f = round(forecast['high_temp'] * 1.8 + 32, 0)
+		low_temp = round(min(entry['temp'] for entry in entries))
+		high_temp = round(max(entry['temp'] for entry in entries))
+		low_f = int(round(low_temp * 1.8 + 32))
+		high_f = int(round(high_temp * 1.8 + 32))
+
+		# Show the next few entries, in chronological order.
+		today = date.today().strftime('%Y-%m-%d')
+		lines = []
+		for entry in entries:
+			label_text = _time_label(entry['hour'])
+			entry_temp_f = int(round(entry['temp'] * 1.8 + 32))
+			lines.append(f"{entry['icon']}  {label_text}: {entry['description']}, {entry['temp']:.1f}°C ({entry_temp_f}°F)")
 
 		# Format the message for broadcasting
 		message = (
-			f"{header}:\n{forecast['general_outlook']}\nLow/High: {forecast['low_temp']} / {forecast['high_temp']}°C\n({low_f} / {high_f}°F)"
+			f"{header}:\n" + '\n'.join(lines) +
+			f"\nLow/High: {low_temp}°C / {high_temp}°C ({low_f}°F / {high_f}°F)"
 		)
 		return CommandResponseSuccess(message)
 	except Exception as e:
