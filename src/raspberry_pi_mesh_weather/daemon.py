@@ -121,15 +121,18 @@ async def daemon_main(test: bool = False):
 		# Get a list of commands to test too
 		cmds = ['ping', 'uptime', 'cpu', 'temp', 'pres', 'humid', 'humidity', 'forecast', 'alerts', 'net']
 		for cmd in cmds:
+			print('')
 			c = get_command(cmd)
 			if c is None:
-				logging.warning('Command %s could not be loaded!', cmd)
+				print('Command %s - success: False, error: Could not be loaded!' % cmd)
 			else:
 				result = c('test')
-				if result.success:
-					logging.info('Command %s: %s', cmd, result.message)
+				if result.success and result.message:
+					print('Command %s - success: True, response:\n%s' % (cmd, result.message))
+				elif result.success:
+					print('Command %s - success: True, response: no response provided' % cmd)
 				else:
-					logging.warning('Command %s did not complete successfully', cmd)
+					print('Command %s - success: False, error: Did not complete successfully' % cmd)
 
 		logging.debug('Test mode requested, exiting.')
 		sys.exit(0)
