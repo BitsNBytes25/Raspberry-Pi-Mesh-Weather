@@ -13,6 +13,9 @@ Tests are located within `tests/`.
 
 All core functionality should have tests to verify functionality and protect against regression bugs.
 
+Static data sources to emulate live responses are generally stored in `tests/fixtures/` grouped by the source.
+The fixture name should be short and descriptive for the test contents, eg: "good_response.json" or "too_many_calls.json".
+
 ## Coding Guidelines
 
 Python code is indented with tab characters.

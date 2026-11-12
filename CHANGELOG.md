@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`humidity` command** — The full `humidity` command is now supported as a direct message command and as `!humidity` on the weather channel, alongside the existing `humid` shorthand. Both resolve to the same response. The `--test` daemon command list now includes `humidity` as well.
 - **`temp` command tests** — Unit tests covering the no-temperature and no-humidity paths and every temperature band (freezing, cold, chilly, comfortable, warm, hot, oppressive), including the dry-air descriptions in the 18–24°C band.
 - **Heat index tests** — Unit tests for `get_heat_index`, including the sub-26.7°C applicability threshold and known values.
+- **`weather_forecast` tests** — Unit tests for `WeatherForecast`: init validation (missing API key / missing location), `get_daily_forecast` against the Columbus fixture (including the no-today-match fallback, request-failure, and malformed-response paths), and `get_description` period-window logic.
 
 ### Changed
 
