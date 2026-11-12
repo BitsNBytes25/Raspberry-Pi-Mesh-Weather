@@ -296,6 +296,7 @@ def cmd_pressure(target: str | None = None) -> CommandResponse:
 
 
 @command('humid', direct=True, group=True)
+@command('humidity', direct=True, group=True)
 def cmd_humidity(target: str | None = None) -> CommandResponse:
 	humidity = get_humidity()
 	if humidity is None:

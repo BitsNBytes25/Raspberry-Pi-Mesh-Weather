@@ -1,6 +1,6 @@
 [project]
 name = "raspberry-pi-mesh-weather"
-version = "1.0.0"
+version = "1.1.0"
 description = "Application to provide additional functionality on Mesh networks"
 requires-python = ">=3.12"
 dependencies = [
