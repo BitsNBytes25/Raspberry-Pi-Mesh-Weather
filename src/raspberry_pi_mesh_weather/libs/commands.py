@@ -214,8 +214,10 @@ def cmd_temp(target: str | None = None) -> CommandResponse:
 		real_temp = round(temp, 1)
 		return CommandResponseSuccess(f"Current temperature here is {real_temp}°C ({fake_temp}°F)")
 	else:
-		fake_temp = int(temp * 1.8 + 32)
-		real_temp = int(temp)
+		# Round once and reuse the same values for both display and banding,
+		# so borderline temperatures (e.g. 24.9°C) get the correct band.
+		real_temp = round(temp)
+		fake_temp = round(temp * 1.8 + 32)
 		temps = f"{real_temp}°C ({fake_temp}°F)"
 		pressure_change = get_pressure_change()
 
@@ -241,35 +243,40 @@ def cmd_temp(target: str | None = None) -> CommandResponse:
 					return CommandResponseSuccess(f"☀️ Perfectly comfortable at {temps}.  Go out for a nice walk.")
 				if humidity > 60:
 					return CommandResponseSuccess(f"☁️ It's a comfortable {temps} but is rather sticky.")
+				return CommandResponseSuccess(f"☀️ Perfectly comfortable and dry at {temps}.  Go out for a nice walk.")
 			else:
 				if 30 <= humidity <= 60:
 					return CommandResponseSuccess(f"☁️ Perfectly comfortable at {temps} but it may storm soon.")
 				if humidity > 60:
 					return CommandResponseSuccess(f"☔ It's a comfortable {temps} but is rather wet out there.")
+				return CommandResponseSuccess(f"☁️ Comfortable and dry at {temps} but it may storm soon.")
 
 		if 24 < real_temp <= 29:
-			hi = int(get_heat_index(real_temp, humidity))
-			fake_hi = int(hi * 1.8 + 32)
+			hi = round(get_heat_index(real_temp, humidity))
+			fake_hi = round(hi * 1.8 + 32)
 			feels_like = f"{hi}°C ({fake_hi}°F)"
 
 			if pressure_change == -1:
 				return CommandResponseSuccess(f"☔ It's a hot and muggy {temps} and feels like {feels_like}.  Expect storms soon.")
-			if hi > 32 and humidity > 70:
-				return CommandResponseSuccess(f"🥵 It's a hot and muggy {temps} but feels like {feels_like}.  Take water & limit activity.")
+			if humidity > 70:
+				if hi > 32:
+					return CommandResponseSuccess(f"🥵 It's a hot and muggy {temps} but feels like {feels_like}.  Take water & limit activity.")
+				return CommandResponseSuccess(f"☁️ Warm and muggy at {temps}.  It feels a bit like {feels_like}.")
 			return CommandResponseSuccess(f"☀️ Warm and sunny at {temps}. Enjoy the heat!")
 
 		if real_temp > 29:
-			hi = int(get_heat_index(real_temp, humidity))
-			fake_hi = int(hi * 1.8 + 32)
+			hi = round(get_heat_index(real_temp, humidity))
+			fake_hi = round(hi * 1.8 + 32)
+			feels_like = f"{hi}°C ({fake_hi}°F)"
+
 			if hi > 34 and humidity > 70:
-				feels_like = f"{hi}°C ({fake_hi}°F"
 				return CommandResponseSuccess(f"🔥 It's an oppressive {temps} & feels like {feels_like}. STAY SAFE AND HYDRATED!")
 
 			if humidity <= 30:
 				return CommandResponseSuccess(f"☀️ Hot and sunny at {temps} but very low humidity.  Enjoy the heat!")
 
 			if pressure_change == -1:
-				return CommandResponseSuccess(f"☀️ Hot and sunny at {temps} right now, but enjoy it while it lasts.  Storms may be on the horizon")
+				return CommandResponseSuccess(f"☀️ Hot and sunny at {temps} right now, but enjoy it while it lasts.  Storms may be on the horizon.")
 
 			return CommandResponseSuccess(f"☀️ Hot and sunny at {temps}. Enjoy the heat!")
 

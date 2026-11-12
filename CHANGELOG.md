@@ -10,10 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **`humidity` command** — The full `humidity` command is now supported as a direct message command and as `!humidity` on the weather channel, alongside the existing `humid` shorthand. Both resolve to the same response. The `--test` daemon command list now includes `humidity` as well.
+- **`temp` command tests** — Unit tests covering the no-temperature and no-humidity paths and every temperature band (freezing, cold, chilly, comfortable, warm, hot, oppressive), including the dry-air descriptions in the 18–24°C band.
+- **Heat index tests** — Unit tests for `get_heat_index`, including the sub-26.7°C applicability threshold and known values.
 
 ### Changed
 
 - **`all` command** output reformatted to be cleaner
+- **`temp` command** — Fixed a malformed oppressive-heat message (missing closing parenthesis) and a missing period at the end of the >29°C storm warning.
+- **`temp` command** — Fixed the 18–24°C band falling through to a bare temperature readout when humidity is below 30%; added dry-air descriptions for that case instead.
+- **`temp` command** — Switched from truncated (`int`) to rounded values for display and band selection so borderline temperatures (e.g. 24.9°C) get the correct description.
+- **`temp` command** — Added a muggy (high-humidity) description to the 24–29°C band for temperatures where the heat index is not yet in the "limit activity" range.
 
 ## [1.0.0] - 2026-06-20
 

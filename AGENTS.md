@@ -21,3 +21,4 @@ Python code is indented with tab characters.
 
 All changes, fixes, and major items should be added to the `CHANGELOG.md` under the `## [NEXT] - YYYY-MM-DD` group.
 If this group does not exist, one should be created to store the features for the next version.
+Note, `YYYY-MM-DD` is **literal** for unreleased versions; the date stamp is usually undetermined so a placeholder is used.
