@@ -91,7 +91,8 @@ class WeatherForecast:
 				'lat': self.lat,
 				'lon': self.lon,
 				'appid': self.api_key,
-				'units': 'metric'  # Get temperature in Celsius
+				'units': 'metric',  # Get temperature in Celsius
+				'cnt': 8  # Limit to 8 responses; this gives a 24-hour span.
 			}
 		)
 
