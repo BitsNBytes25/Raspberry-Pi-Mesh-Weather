@@ -305,22 +305,62 @@ def cmd_humidity(target: str | None = None) -> CommandResponse:
 		return CommandResponseSuccess('Current humidity here is %s%%' % round(humidity, 1))
 
 
+def _weather_icon(temp: float | None, humidity: float | None, pressure_change: float) -> str:
+	"""
+	Pick a friendly emoji to represent the current local conditions.
+
+	:param temp: Current temperature in °C (or None if unavailable)
+	:param humidity: Current relative humidity in % (or None if unavailable)
+	:param pressure_change: 1 if pressure is rising, -1 if falling, 0 if stable.
+	:return: Emoji representing the current conditions.
+	"""
+	if temp is not None and temp < 1:
+		# Freezing - takes precedence over everything else.
+		return '🥶'
+	if pressure_change == -1:
+		# Pressure falling - rain is likely.
+		return '🌧️'
+	if pressure_change == 1:
+		# Pressure rising - expect sunshine.
+		return '☀️'
+	if humidity is not None and humidity > 70:
+		# Muggy and damp - expect overcast.
+		return '⛅'
+	return '☀️'
+
+
 @command('all', group=True, direct=True)
 def cmd_all_sensors(target: str | None = None) -> CommandResponse:
+	"""
+	Report all available local sensor readings along with the current weather.
+	"""
 	temp = get_temperature()
 	humidity = get_humidity()
 	pressure = get_pressure()
+	pressure_change = get_pressure_change()
 	sensors = []
 
 	if temp is not None:
-		sensors.append('Temp: %s°C' % round(temp, 1))
+		fake_temp = round(temp * 9/5 + 32)
+		sensors.append(f"{temp:.1f}°C ({fake_temp}°F)")
 	if humidity is not None:
-		sensors.append('Humi: %s%%' % round(humidity, 1))
+		sensors.append(f"{humidity:.1f}% humidity")
 	if pressure is not None:
-		sensors.append('Pres: %shPa' % round(pressure, 1))
+		if pressure_change == 1:
+			trend = 'rising'
+		elif pressure_change == -1:
+			trend = 'falling'
+		else:
+			trend = 'stable'
+		sensors.append(f"{pressure:.1f} hPa ({trend})")
 
 	if len(sensors) > 0:
-		return CommandResponseSuccess('Current conditions here:\n' + ' | '.join(sensors))
+		icon = _weather_icon(temp, humidity, pressure_change)
+		if config.location.label:
+			header = f'Weather in {config.location.label}:'
+		else:
+			header = 'Current weather here:'
+		return CommandResponseSuccess(f'{icon} {header}\n' + ' | '.join(sensors))
 	else:
 		return CommandResponseNoData('Sorry, but no sensor data is available')
 

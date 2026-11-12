@@ -737,7 +737,7 @@ wheels = [
 
 [[package]]
 name = "raspberry-pi-mesh-weather"
-version = "1.0.0"
+version = "1.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "paho-mqtt" },
