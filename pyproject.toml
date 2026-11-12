@@ -5,9 +5,9 @@ description = "Application to provide additional functionality on Mesh networks"
 requires-python = ">=3.12"
 dependencies = [
     "paho-mqtt>=2.1.0",
-    "pyjwt>=2.13.0",
+    "pyjwt>=2.15.0",
     "pyyaml>=6.0.3",
-    "requests>=2.33.1",
+    "requests==2.34.2",
     "RPi.GPIO>=0.7.1",
     "smbus2>=0.6.1",
     "spidev>=3.8",

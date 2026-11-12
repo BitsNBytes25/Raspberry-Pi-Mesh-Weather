@@ -99,6 +99,95 @@ sudo apt install -y python3-dev libjpeg-dev zlib1g-dev libfreetype6-dev
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
+## Development
+
+Instructions for setting up a local development environment and running the project from source.
+
+### Prerequisites
+
+* Python 3.12 or later
+* [uv](https://docs.astral.sh/uv/) for dependency management (the project ships a `uv.lock` lockfile)
+
+Install uv if you don't already have it:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+### Setup
+
+```bash
+git clone git@github.com:BitsNBytes25/Raspberry-Pi-Mesh-Weather.git
+cd Raspberry-Pi-Mesh-Weather
+
+# Configure the local config file (git-ignored; copy from the example)
+cp config.yaml.example config.yaml
+vim config.yaml
+
+# Legacy env file (not read by the current code, but kept in the repo for compatibility)
+cp .env.example .env
+vim .env
+```
+
+### Dependencies
+
+The base install (`uv sync`) installs the runtime dependencies plus the `dev` group (pytest, pytest-asyncio, pytest-mock, pytest-cov):
+
+```bash
+uv sync --frozen
+```
+
+Install optional hardware features with `--group`, or all of them at once with `--all`:
+
+```bash
+uv sync --frozen --group radio-meshcore       # MeshCore radio support
+uv sync --frozen --group radio-meshtastic      # Meshtastic radio support
+uv sync --frozen --group sensor-bme280         # BME280 sensor support
+uv sync --frozen --group display-sh1106        # SH1106 OLED display support
+uv sync --frozen --all                          # or all optional groups
+```
+
+Each hardware service is loaded lazily and the daemon logs an error if the hardware isn't present, so the application will still start on a dev machine without the full hardware stack attached.
+
+> **Note:** when enabling or disabling a hardware feature, re-run the appropriate `uv sync` command so the dependency groups match your configuration. The same applies to `install.sh` on the production device.
+
+### Running Tests
+
+```bash
+uv run pytest
+```
+
+Run a single test file:
+
+```bash
+uv run pytest tests/raspberry_pi_mesh_weather/libs/test_meshcore_packet.py
+```
+
+Run with coverage:
+
+```bash
+uv run pytest --cov=raspberry_pi_mesh_weather
+```
+
+### Running the Daemon
+
+```bash
+# Enable debug logging
+uv run daemon --debug
+
+# Smoke-test supported commands without connecting to the mesh network
+uv run daemon --test
+```
+
+The `daemon` entry point is installed as a console script into the virtual environment by `uv sync`, so it can also be run directly:
+
+```bash
+source .venv/bin/activate
+daemon --debug
+```
+
+> **Note:** for production use on the Pi, use `install.sh` instead, which creates a `systemd` service that runs the daemon in the background. See the [Installation](#installation) section.
+
 ## Supported Commands (Weather channel)
 
 * !temperature - Get the current temperature
