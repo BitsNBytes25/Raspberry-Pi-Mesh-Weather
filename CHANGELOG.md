@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`temp` command** — Switched from truncated (`int`) to rounded values for display and band selection so borderline temperatures (e.g. 24.9°C) get the correct description.
 - **`temp` command** — Added a muggy (high-humidity) description to the 24–29°C band for temperatures where the heat index is not yet in the "limit activity" range.
 - Cleanup output when running `daemon --test` to better view raw command responses
+- **Commands refactored into `commands/` package** — The monolithic `libs/commands.py` was split into the `libs/commands/` package with one module per command (`help`, `ping`, `uptime`, `cpu`, `temp`, `pres`, `humidity`, `all_sensors`, `forecast`, `alerts`, `reboot`, `wake`, `net`) plus a separate `handler.py` holding the common functionality: the command registry, the `command()` decorator, the response classes, and the `get_command()` dispatch.
+- **Command authorization now enforced** — The registry previously stored the raw command functions, so `get_command()` returned them unwrapped and the `auth` guard was bypassed, letting any radio run protected commands. The `handler` now stores the auth-wrapping function, so dispatch enforces the `auth` flag against the caller's public key; unauthorized callers (or a missing/empty key) get a "not authorized" response. `reboot`, `net`, and `wake` are now genuinely protected.
+- **`ping` command** — No longer raises `TypeError` when invoked with no target (the channel/internal path calls commands with `None`); returns a bare `pong` instead of a crash.
 
 ## [1.0.0] - 2026-06-20
 

@@ -20,6 +20,11 @@ The fixture name should be short and descriptive for the test contents, eg: "goo
 
 Python code is indented with tab characters.
 
+Do not over-complicate solutions, prefer a simple solution over complex ones.
+
+DRY - Don't Repeat Yourself; once a given set of functionality is used by 2 or more modules, 
+it should probably be in a shared location.
+
 ## Changelog Guidelines
 
 All changes, fixes, and major items should be added to the `CHANGELOG.md` under the `## [NEXT] - YYYY-MM-DD` group.

@@ -2,14 +2,15 @@ import pytest
 from datetime import date
 
 from raspberry_pi_mesh_weather.libs import commands
+from raspberry_pi_mesh_weather.libs.commands import all_sensors, forecast, temp as temp_module
 
 
 def _patch_readings(mocker, temp, humidity, pressure, change, label):
-	mocker.patch.object(commands, 'get_temperature', return_value=temp)
-	mocker.patch.object(commands, 'get_humidity', return_value=humidity)
-	mocker.patch.object(commands, 'get_pressure', return_value=pressure)
-	mocker.patch.object(commands, 'get_pressure_change', return_value=change)
-	location = mocker.patch.object(commands, 'config')
+	mocker.patch.object(all_sensors, 'get_temperature', return_value=temp)
+	mocker.patch.object(all_sensors, 'get_humidity', return_value=humidity)
+	mocker.patch.object(all_sensors, 'get_pressure', return_value=pressure)
+	mocker.patch.object(all_sensors, 'get_pressure_change', return_value=change)
+	location = mocker.patch.object(all_sensors, 'config')
 	location.location.label = label
 	return commands.cmd_all_sensors(None)
 
@@ -104,10 +105,9 @@ def test_all_sensors_no_readings(mocker):
 
 
 def _patch_temp_readings(mocker, temp, humidity, change):
-	mocker.patch.object(commands, 'get_temperature', return_value=temp)
-	mocker.patch.object(commands, 'get_humidity', return_value=humidity)
-	mocker.patch.object(commands, 'get_pressure', return_value=1013.0)
-	mocker.patch.object(commands, 'get_pressure_change', return_value=change)
+	mocker.patch.object(temp_module, 'get_temperature', return_value=temp)
+	mocker.patch.object(temp_module, 'get_humidity', return_value=humidity)
+	mocker.patch.object(temp_module, 'get_pressure_change', return_value=change)
 	return commands.cmd_temp(None)
 
 
@@ -308,19 +308,19 @@ def _patch_forecast_cmd(mocker, entries, label='cbus', api='test-api-key', today
 	Invoke cmd_daily_forecast with a mocked WeatherForecast that returns `entries`.
 	Patches config, WeatherForecast, and (optionally) date.today.
 	"""
-	config = mocker.patch.object(commands, 'config')
+	config = mocker.patch.object(forecast, 'config')
 	config.weather.openweather_api_key = api
 	config.location.lat = 39.96
 	config.location.lon = -83.0
 	config.location.label = label
-	weather = mocker.patch.object(commands, 'WeatherForecast')
+	weather = mocker.patch.object(forecast, 'WeatherForecast')
 	weather.return_value.get_daily_forecast.return_value = entries
 	if today is not None:
 		class _FakeDate(date):
 			@classmethod
 			def today(cls):
 				return today
-		mocker.patch.object(commands, 'date', _FakeDate)
+		mocker.patch.object(forecast, 'date', _FakeDate)
 	return commands.cmd_daily_forecast(None)
 
 
@@ -378,7 +378,7 @@ def test_forecast_command_missing_label_uses_plain_header(mocker):
 
 
 def test_forecast_command_no_api_key(mocker):
-	config = mocker.patch.object(commands, 'config')
+	config = mocker.patch.object(forecast, 'config')
 	config.weather.openweather_api_key = ''
 	config.location.lat = 39.96
 	config.location.lon = -83.0
@@ -391,12 +391,12 @@ def test_forecast_command_no_api_key(mocker):
 
 
 def test_forecast_command_empty_entries(mocker):
-	config = mocker.patch.object(commands, 'config')
+	config = mocker.patch.object(forecast, 'config')
 	config.weather.openweather_api_key = 'test-api-key'
 	config.location.lat = 39.96
 	config.location.lon = -83.0
 	config.location.label = 'cbus'
-	mocker.patch.object(commands, 'WeatherForecast').return_value.get_daily_forecast.return_value = []
+	mocker.patch.object(forecast, 'WeatherForecast').return_value.get_daily_forecast.return_value = []
 	result = commands.cmd_daily_forecast(None)
 
 	assert result.success is False
