@@ -50,6 +50,14 @@ class WeatherConfig:
 
 
 @dataclass
+class GeneralConfig:
+	# Icon style used for forecast messages:
+	#   'modern'     - colour emoji (best on modern clients)
+	#   'compatible' - U+2600-U+27BF block glyphs (safest on mesh devices)
+	icon_style: str = 'compatible'
+
+
+@dataclass
 class HomeAssistantConfig:
 	url: str | None = None
 	token: str | None = None
@@ -80,6 +88,7 @@ class Config:
 	sensors: list[SensorConfig]
 	location: LocationConfig
 	weather: WeatherConfig
+	general: GeneralConfig
 	home_assistant: HomeAssistantConfig
 	auth_radios: list[str]
 	mqtt: list[MqttConfig]
@@ -107,6 +116,7 @@ class Config:
 			sensors=sensors,
 			location=LocationConfig(**raw_data['location']),
 			weather=WeatherConfig(**raw_data['weather']),
+			general=GeneralConfig(**raw_data['general']),
 			home_assistant=HomeAssistantConfig(**raw_data['home_assistant']),
 			auth_radios=raw_data['auth_radios'],
 			mqtt=mqtts,

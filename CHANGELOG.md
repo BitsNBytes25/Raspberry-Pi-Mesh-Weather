@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`temp` command tests** — Unit tests covering the no-temperature and no-humidity paths and every temperature band (freezing, cold, chilly, comfortable, warm, hot, oppressive), including the dry-air descriptions in the 18–24°C band.
 - **Heat index tests** — Unit tests for `get_heat_index`, including the sub-26.7°C applicability threshold and known values.
 - **`weather_forecast` tests** — Unit tests for `WeatherForecast`: init validation (missing API key / missing location), `get_daily_forecast` against the Columbus fixture (including the no-today-match fallback, request-failure, and malformed-response paths), and `get_description` period-window logic.
+- **Icon map library** (`libs/icon_map.py`) — Centralised icon lookup keyed by standard, source-independent icon names (`sun`, `moon`, `cloud`, `rain`, `drizzle`, `snow`, `fog`, `thunderstorm`, `sun_clouds`) rather than any feed's codes. Two glyph sets are available: `WEATHER_ICONS_MODERN` (colour emoji, best on modern clients) and `WEATHER_ICONS_COMPATIBLE` (basic U+2600-U+27BF block glyphs, safe on the limited fonts of ESP32/NRF mesh devices). The internal `OWM_ICON_NAMES` map translates OpenWeatherMap codes to standard names, and `get_weather_icon(owm_code)` / `get_icon(name)` resolve a code or name via the new `general.icon_style` config option, so callers never need to know which set or which feed is active. Covers all WMO codes, including the previously-missing 45/48 (mist/frost), 80/81 (snow showers) and 95/96/99 (thunderstorm) codes.
 
 ### Changed
 
@@ -28,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Commands refactored into `commands/` package** — The monolithic `libs/commands.py` was split into the `libs/commands/` package with one module per command (`help`, `ping`, `uptime`, `cpu`, `temp`, `pres`, `humidity`, `all_sensors`, `forecast`, `alerts`, `reboot`, `wake`, `net`) plus a separate `handler.py` holding the common functionality: the command registry, the `command()` decorator, the response classes, and the `get_command()` dispatch.
 - **Command authorization now enforced** — The registry previously stored the raw command functions, so `get_command()` returned them unwrapped and the `auth` guard was bypassed, letting any radio run protected commands. The `handler` now stores the auth-wrapping function, so dispatch enforces the `auth` flag against the caller's public key; unauthorized callers (or a missing/empty key) get a "not authorized" response. `reboot`, `net`, and `wake` are now genuinely protected.
 - **`ping` command** — No longer raises `TypeError` when invoked with no target (the channel/internal path calls commands with `None`); returns a bare `pong` instead of a crash.
+- **Weather icons** — Forecast icons are now resolved through `get_weather_icon()` from the new `general.icon_style` setting, defaulting to the `compatible` glyph set so icons render on mesh clients instead of showing as "*". Colour emoji are still available by setting `icon_style: "modern"`.
 
 ## [1.0.0] - 2026-06-20
 

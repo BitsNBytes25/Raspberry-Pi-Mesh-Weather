@@ -1,5 +1,15 @@
 # Refer to https://github.com/BitsNBytes25/Raspberry-Pi-Mesh-Weather for full documentation.
 
+# General Configuration
+#
+# Global settings that don't belong to any one service.
+general:
+  # Icon style used for forecast messages:
+  #   "modern"     - colour emoji, best on modern clients
+  #   "compatible" - U+2600-U+27BF block glyphs, safest on mesh devices
+  #                  (default; avoids "*" glyphs on limited client fonts)
+  icon_style: "compatible"
+
 # Display Configuration
 # Configuration to control the display on the raspberry pi, if one is present.
 display:

@@ -2,6 +2,7 @@ import requests
 import logging
 from datetime import datetime
 from .config import config
+from .icon_map import get_weather_icon
 
 
 class WeatherForecast:
@@ -65,19 +66,6 @@ class WeatherForecast:
 			logging.error("Error: No forecast data found in the response.")
 			return []
 
-		# Include pretty UTF-8 emoticons for the various weather codes provided by OpenWeatherMap
-		weather_emojis = {
-			"01d": "☀️", "01n": "🌙",
-			"02d": "⛅", "02n": "☁️",
-			"03d": "🌤️", "03n": "☁️",
-			"04d": "☁️", "04n": "☁️",
-			"09d": "🌧️", "09n": "🌧️",
-			"10d": "🌦️", "10n": "🌧️",
-			"11d": "⛈️", "11n": "⛈️",
-			"13d": "❄️", "13n": "❄️",
-			"50d": "🌫️", "50n": "🌫️"
-		}
-
 		breakdown = []
 		# The API already returns the next periods in order; sort defensively so the
 		# result is always chronological.
@@ -92,7 +80,7 @@ class WeatherForecast:
 				'humidity': item['main']['humidity'],
 				'pop': item['pop'],
 				'description': item['weather'][0]['description'],
-				'icon': weather_emojis.get(item['weather'][0]['icon'], ''),
+				'icon': get_weather_icon(item['weather'][0]['icon']),
 			})
 
 		return breakdown

@@ -3,7 +3,7 @@ import requests
 
 from datetime import datetime, timezone
 
-from raspberry_pi_mesh_weather.libs import weather_forecast
+from raspberry_pi_mesh_weather.libs import icon_map, weather_forecast
 from raspberry_pi_mesh_weather.libs.weather_forecast import WeatherForecast
 
 
@@ -42,11 +42,15 @@ def _patch_request_failure(mocker):
 								side_effect=requests.exceptions.ConnectionError('no connectivity'))
 
 
-def _build_forecast(mocker, api_key='test-api-key', lat=39.96, lon=-83.0):
+def _build_forecast(mocker, api_key='test-api-key', lat=39.96, lon=-83.0,
+					icon_style='modern'):
 	patched_config = mocker.patch.object(weather_forecast, 'config')
 	patched_config.weather.openweather_api_key = api_key
 	patched_config.location.lat = lat
 	patched_config.location.lon = lon
+	# Icon resolution reads the global config singleton (used by icon_map),
+	# which is a different object from the module-local mock above.
+	mocker.patch.object(icon_map.config.general, 'icon_style', icon_style)
 	return WeatherForecast()
 
 
@@ -161,3 +165,13 @@ def test_get_daily_forecast_returns_empty_on_malformed_response(forecast, mocker
 def test_get_daily_forecast_returns_empty_on_empty_list(forecast, mocker):
 	_patch_request(mocker, {'cod': '200', 'list': []})
 	assert forecast.get_daily_forecast() == []
+
+
+def test_get_daily_forecast_respects_compatible_icon_style(columbus_afternoon, mocker):
+	_patch_time(mocker)
+	_patch_request(mocker, columbus_afternoon)
+	client = _build_forecast(mocker, icon_style='compatible')
+	result = client.get_daily_forecast()
+	# 10d (light rain) maps to the umbrella-with-droplets glyph in the
+	# widely-supported set instead of the colour emoji.
+	assert result[0]['icon'] == '\u2602'
