@@ -18,16 +18,23 @@
 # along with this program.  If not, see <https://gnu.org>.
 
 import logging
-from datetime import date
 
 from .handler import command, CommandResponse, CommandResponseError, CommandResponseSuccess
 from raspberry_pi_mesh_weather.libs.config import config
 from raspberry_pi_mesh_weather.libs.weather_forecast import WeatherForecast
 
+# Descriptions with no precipitation / disruptive weather.  Used to decide
+# when to lead with the incoming weather (the "around" phrasing) instead of
+# the calm current state.
+CALM_WEATHER = {
+	'clear sky', 'few clouds', 'scattered clouds',
+	'partly cloudy', 'broken clouds', 'overcast clouds',
+}
+
 
 def _time_label(hour: int) -> str:
 	"""
-	Format a 24-hour time to a human readable format.
+	Format a 24-hour time to a short human readable format.
 
 	'0' => 12 AM
 	'11' => 11 AM
@@ -35,19 +42,71 @@ def _time_label(hour: int) -> str:
 
 	:param hour: 24-hour time
 	"""
-	period = "AM" if hour < 12 else "PM"
+	period = "A" if hour < 12 else "P"
 	hour12 = hour % 12 or 12
-	return f"{hour12} {period}"
+	return f"{hour12}{period}"
+
+
+def _cap_first(text: str) -> str:
+	"""
+	Uppercase only the first letter of `text`, leaving the rest unchanged.
+
+	Avoids str.capitalize(), which would lowercase an "AM/PM" in the middle.
+	"""
+	return text[:1].upper() + text[1:]
+
+
+def _temp_label(entry: dict) -> str:
+	"""
+	Compact Celsius / Fahrenheit label for a single entry.
+
+	:param entry: a forecast entry dict with a 'temp' key
+	"""
+	f = int(round(entry['temp'] * 1.8 + 32))
+	return f"{entry['temp']:.0f}°C/{f}°F"
+
+
+def _forecast_summary(entries: list[dict]) -> str:
+	"""
+	Build a compact two-state narrative from the chronological entries.
+
+	Consecutive entries sharing a description are grouped and the narrative
+	is capped at two states (the current state plus the first change).
+	Returns a one-line narrative:
+	  - 'Light rain until 7 AM, then broken clouds'  (general)
+	  - 'Light rain around 7 AM'                     (calm now, active arriving)
+	  - 'Clear sky'                                  (single state)
+	"""
+	# Run-length group the entries by description (they are chronological).
+	runs = []
+	for entry in entries:
+		if runs and runs[-1][0] == entry['description']:
+			continue
+		runs.append((entry['description'], entry))
+
+	a_desc = runs[0][0]
+
+	# Single state covers the whole window.
+	if len(runs) == 1:
+		return _cap_first(a_desc)
+
+	b_desc, b_entry = runs[1]
+	change_label = _time_label(b_entry['hour'])
+	calm_now = a_desc in CALM_WEATHER
+	active_incoming = b_desc not in CALM_WEATHER
+
+	if calm_now and active_incoming:
+		# Current skies are calm; the useful part is the incoming weather.
+		return _cap_first(b_desc) + f" around {change_label}"
+
+	return _cap_first(a_desc) + f" until {change_label}, then {b_desc}"
 
 
 @command('forecast', direct=True, group=True)
 def cmd_daily_forecast(target: str | None = None) -> CommandResponse:
 	"""
-	Fetches the next forecast entries and broadcasts them over the mesh network.
-
-	The next few entries are shown in chronological order, so an evening call
-	starts with the current evening and spills into tomorrow, while a morning
-	call shows the morning, afternoon and evening of the current day.
+	Fetches the next forecast entries and broadcasts a compact two-state
+	summary over the mesh network.
 	"""
 	api = config.weather.openweather_api_key
 	lat = config.location.lat
@@ -66,39 +125,24 @@ def cmd_daily_forecast(target: str | None = None) -> CommandResponse:
 		logging.error('No longitude set, unable to pull forecast data.')
 		return CommandResponseError('No longitude set, unable to pull forecast data.')
 
-	if label == '':
-		header = 'Forecast'
-	else:
-		header = f'Forecast for {label}'
+	header = f'Forecast for {label}' if label else 'Forecast'
 
 	logging.debug('--- Running Daily Weather Forecast Fetch ---')
 	try:
 		# Initialize the weather client (it will read OPENWEATHERMAP_API_KEY)
 		weather_client = WeatherForecast()
-		entries = weather_client.get_daily_forecast(5)
+		entries = weather_client.get_daily_forecast(4)
 
 		if not entries:
 			print('Weather Forecast: Failed to retrieve data.')
 			return CommandResponseError('Failed to retrieve forecast data.')
 
-		low_temp = round(min(entry['temp'] for entry in entries))
-		high_temp = round(max(entry['temp'] for entry in entries))
-		low_f = int(round(low_temp * 1.8 + 32))
-		high_f = int(round(high_temp * 1.8 + 32))
-
-		# Show the next few entries, in chronological order.
-		today = date.today().strftime('%Y-%m-%d')
-		lines = []
-		for entry in entries:
-			label_text = _time_label(entry['hour'])
-			entry_temp_f = int(round(entry['temp'] * 1.8 + 32))
-			lines.append(f"{entry['icon']}  {label_text}: {entry['description']}, {entry['temp']:.1f}°C ({entry_temp_f}°F)")
-
-		# Format the message for broadcasting
-		message = (
-			f"{header}:\n" + '\n'.join(lines) +
-			f"\nLow/High: {low_temp}°C / {high_temp}°C ({low_f}°F / {high_f}°F)"
-		)
+		summary = _forecast_summary(entries)
+		lines = [
+			f"{entry['icon']}  {_time_label(entry['hour'])}: {_temp_label(entry)}"
+			for entry in entries
+		]
+		message = f"{header}: {summary}\n" + "\n".join(lines)
 		return CommandResponseSuccess(message)
 	except Exception as e:
 		error_msg = f"Daily Weather: An error occurred during forecast fetching/broadcasting: {e}"

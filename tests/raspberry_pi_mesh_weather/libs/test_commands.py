@@ -1,5 +1,4 @@
 import pytest
-from datetime import date
 
 from raspberry_pi_mesh_weather.libs import commands
 from raspberry_pi_mesh_weather.libs.commands import all_sensors, forecast, temp as temp_module
@@ -303,10 +302,9 @@ def test_heat_index_35c_75rh():
 # --- forecast --------------------------------------------------------
 
 
-def _patch_forecast_cmd(mocker, entries, label='cbus', api='test-api-key', today=None):
+def _patch_forecast_cmd(mocker, entries, label='cbus', api='test-api-key'):
 	"""
 	Invoke cmd_daily_forecast with a mocked WeatherForecast that returns `entries`.
-	Patches config, WeatherForecast, and (optionally) date.today.
 	"""
 	config = mocker.patch.object(forecast, 'config')
 	config.weather.openweather_api_key = api
@@ -315,12 +313,6 @@ def _patch_forecast_cmd(mocker, entries, label='cbus', api='test-api-key', today
 	config.location.label = label
 	weather = mocker.patch.object(forecast, 'WeatherForecast')
 	weather.return_value.get_daily_forecast.return_value = entries
-	if today is not None:
-		class _FakeDate(date):
-			@classmethod
-			def today(cls):
-				return today
-		mocker.patch.object(forecast, 'date', _FakeDate)
 	return commands.cmd_daily_forecast(None)
 
 
@@ -332,18 +324,17 @@ def test_forecast_command_evening_spills_into_tomorrow(mocker):
 		{'hour': 6, 'date': '2026-11-14', 'temp': 4.82, 'icon': '🌧️', 'description': 'light rain'},
 		{'hour': 9, 'date': '2026-11-14', 'temp': 4.77, 'icon': '🌧️', 'description': 'light rain'},
 	]
-	result = _patch_forecast_cmd(mocker, entries, today=date(2026, 11, 13))
+	result = _patch_forecast_cmd(mocker, entries)
 
 	assert result.success is True
 	assert result.has_data is True
 	assert result.message == (
-		'Forecast for cbus:\n'
-		'🌧️  9 PM: light rain, 9.5°C (49°F)\n'
-		'🌧️  12 AM: light rain, 7.4°C (45°F)\n'
-		'☁️  3 AM: overcast clouds, 4.8°C (41°F)\n'
-		'🌧️  6 AM: light rain, 4.8°C (41°F)\n'
-		'🌧️  9 AM: light rain, 4.8°C (41°F)\n'
-		'Low/High: 5°C / 10°C (41°F / 50°F)'
+		'Forecast for cbus: Light rain until 3A, then overcast clouds\n'
+		'🌧️  9P: 10°C/49°F\n'
+		'🌧️  12A: 7°C/45°F\n'
+		'☁️  3A: 5°C/41°F\n'
+		'🌧️  6A: 5°C/41°F\n'
+		'🌧️  9A: 5°C/41°F'
 	)
 
 
@@ -353,27 +344,76 @@ def test_forecast_command_morning_all_today(mocker):
 		{'hour': 12, 'date': '2026-11-13', 'temp': 3.98, 'icon': '☁️', 'description': 'broken clouds'},
 		{'hour': 15, 'date': '2026-11-13', 'temp': 10.08, 'icon': '☁️', 'description': 'broken clouds'},
 	]
-	result = _patch_forecast_cmd(mocker, entries, today=date(2026, 11, 13))
+	result = _patch_forecast_cmd(mocker, entries)
 
 	assert result.success is True
 	assert result.message == (
-		'Forecast for cbus:\n'
-		'🌧️  9 AM: light rain, 9.5°C (49°F)\n'
-		'☁️  12 PM: broken clouds, 4.0°C (39°F)\n'
-		'☁️  3 PM: broken clouds, 10.1°C (50°F)\n'
-		'Low/High: 4°C / 10°C (39°F / 50°F)'
+		'Forecast for cbus: Light rain until 12P, then broken clouds\n'
+		'🌧️  9A: 10°C/49°F\n'
+		'☁️  12P: 4°C/39°F\n'
+		'☁️  3P: 10°C/50°F'
 	)
 
 
 def test_forecast_command_missing_label_uses_plain_header(mocker):
 	entries = [{'hour': 9, 'date': '2026-11-13', 'temp': 9.54, 'icon': '☀️', 'description': 'clear sky'}]
-	result = _patch_forecast_cmd(mocker, entries, label='', today=date(2026, 11, 13))
+	result = _patch_forecast_cmd(mocker, entries, label='')
 
 	assert result.success is True
 	assert result.message == (
-		'Forecast:\n'
-		'☀️  9 AM: clear sky, 9.5°C (49°F)\n'
-		'Low/High: 10°C / 10°C (50°F / 50°F)'
+		'Forecast: Clear sky\n'
+		'☀️  9A: 10°C/49°F'
+	)
+
+
+def test_forecast_command_around_when_calm_then_active(mocker):
+	# Calm now with rain arriving -> lead with the incoming weather.
+	entries = [
+		{'hour': 22, 'date': '2026-11-13', 'temp': 2.0, 'icon': '☀️', 'description': 'clear sky'},
+		{'hour': 7, 'date': '2026-11-14', 'temp': 4.3, 'icon': '🌧️', 'description': 'light rain'},
+		{'hour': 10, 'date': '2026-11-14', 'temp': 7.3, 'icon': '🌧️', 'description': 'light rain'},
+	]
+	result = _patch_forecast_cmd(mocker, entries)
+
+	assert result.success is True
+	assert result.message == (
+		'Forecast for cbus: Light rain around 7A\n'
+		'☀️  10P: 2°C/36°F\n'
+		'🌧️  7A: 4°C/40°F\n'
+		'🌧️  10A: 7°C/45°F'
+	)
+
+
+def test_forecast_command_active_then_calm_uses_until(mocker):
+	# Active now clearing to calm -> standard two-state phrasing, not "around".
+	entries = [
+		{'hour': 21, 'date': '2026-11-13', 'temp': 5.0, 'icon': '🌧️', 'description': 'light rain'},
+		{'hour': 7, 'date': '2026-11-14', 'temp': 1.0, 'icon': '☀️', 'description': 'clear sky'},
+	]
+	result = _patch_forecast_cmd(mocker, entries)
+
+	assert result.success is True
+	assert result.message == (
+		'Forecast for cbus: Light rain until 7A, then clear sky\n'
+		'🌧️  9P: 5°C/41°F\n'
+		'☀️  7A: 1°C/34°F'
+	)
+
+
+def test_forecast_command_single_state(mocker):
+	entries = [
+		{'hour': 9, 'date': '2026-11-13', 'temp': 9.54, 'icon': '☀️', 'description': 'clear sky'},
+		{'hour': 12, 'date': '2026-11-13', 'temp': 8.1, 'icon': '☀️', 'description': 'clear sky'},
+		{'hour': 15, 'date': '2026-11-13', 'temp': 9.9, 'icon': '☀️', 'description': 'clear sky'},
+	]
+	result = _patch_forecast_cmd(mocker, entries)
+
+	assert result.success is True
+	assert result.message == (
+		'Forecast for cbus: Clear sky\n'
+		'☀️  9A: 9.5°C/49°F\n'
+		'☀️  12P: 8.1°C/47°F\n'
+		'☀️  3P: 9.9°C/50°F'
 	)
 
 
