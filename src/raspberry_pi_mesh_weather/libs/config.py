@@ -116,7 +116,7 @@ class Config:
 			sensors=sensors,
 			location=LocationConfig(**raw_data['location']),
 			weather=WeatherConfig(**raw_data['weather']),
-			general=GeneralConfig(**raw_data['general']),
+			general=GeneralConfig(**raw_data.get('general', {})),
 			home_assistant=HomeAssistantConfig(**raw_data['home_assistant']),
 			auth_radios=raw_data['auth_radios'],
 			mqtt=mqtts,
