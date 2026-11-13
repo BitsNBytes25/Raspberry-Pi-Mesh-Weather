@@ -34,3 +34,12 @@ Note, `YYYY-MM-DD` is **literal** for unreleased versions; the date stamp is usu
 **DO NOT RENAME "YYYY-MM-DD" TO TODAY'S DATE!!!!!!!!!**
 
 Let me repeat that, **KEEP LITERALLY `## [NEXT] - YYYY-MM-DD` AS THE CHANGELOG HEADER**!
+
+## Command Guidelines
+
+A major feature of this project is listening for messages over a mesh network and provide responses
+via channels (like `#weather`) or direct messages.
+Meshtastic supports 200 characters and MeshCore supports 130 characters, so all command responses
+must be under 130 characters in length.
+Exceeding this 130 character limit will not result in exceptions or errors, but will result in
+data truncation when sending the reply via the radio.

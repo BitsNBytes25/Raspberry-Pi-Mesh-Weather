@@ -34,6 +34,7 @@ from .all_sensors import cmd_all_sensors
 from .cpu import cmd_cpu
 from .forecast import cmd_daily_forecast
 from .help import cmd_direct_help, cmd_group_help
+from .icons import cmd_icons
 from .humidity import cmd_humidity
 from .net import cmd_net
 from .ping import cmd_ping

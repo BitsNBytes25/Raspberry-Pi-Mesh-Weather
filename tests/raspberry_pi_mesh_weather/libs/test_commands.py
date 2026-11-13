@@ -1,6 +1,7 @@
 import pytest
 
 from raspberry_pi_mesh_weather.libs import commands
+from raspberry_pi_mesh_weather.libs import icon_map
 from raspberry_pi_mesh_weather.libs.commands import all_sensors, forecast, temp as temp_module
 
 
@@ -481,3 +482,38 @@ def test_forecast_command_empty_entries(mocker):
 	assert result.success is False
 	assert result.has_data is False
 	assert result.message == 'Failed to retrieve forecast data.'
+
+
+# --- icons --------------------------------------------------------
+#
+# Minimal diagnostic command: returns every weather glyph of the active
+# icon style, so the sender can verify which icons render on their own
+# device.
+
+
+def test_icons_default_compatible_style():
+	# No patching: honours the shipped default ('compatible', no variation
+	# selectors) from the dataclass / config.yaml.
+	result = commands.cmd_icons(None)
+
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == '☁ ☂ ☁ ☾ ☔ ❄ ☀ ⛅ ⛈'
+
+
+def test_icons_compatible_style(mocker):
+	mocker.patch.object(icon_map.config.general, 'icon_style', 'compatible')
+	result = commands.cmd_icons(None)
+
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == '☁ ☂ ☁ ☾ ☔ ❄ ☀ ⛅ ⛈'
+
+
+def test_icons_modern_style(mocker):
+	mocker.patch.object(icon_map.config.general, 'icon_style', 'modern')
+	result = commands.cmd_icons(None)
+
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == '☁️ 🌦️ 🌫️ 🌙️ 🌧️ ❄️ ☀️ ⛅️ ⛈️'

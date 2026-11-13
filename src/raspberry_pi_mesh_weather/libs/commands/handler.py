@@ -60,6 +60,15 @@ def command(
 	direct: bool = False,
 	group: bool = False
 ):
+	"""
+	Decorator for commands that can be executed over the mesh
+
+	:param name: String to initiate this command from a mesh message
+	:param auth: True/False if command only responds to authenticated devices (default: False)
+	:param direct: True/False if command is a DM command (default: False)
+	:param group: True/False if command is a #weather channel command (default: False)
+	:return:
+	"""
 	def decorator(func):
 		@functools.wraps(func)
 		def wrapper(pubkey: str | None = None, *args, **kwargs):

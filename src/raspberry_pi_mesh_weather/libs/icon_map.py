@@ -18,7 +18,10 @@ OpenWeatherMap-specific convenience bridge used by the forecast client."""
 
 from .config import config
 
-STANDARD_ICON_NAMES = {
+# Authoritative, ordered list of standard icon names.  Order is meaningful
+# and reused directly by consumers (e.g. the `icons` diagnostic command) so the
+# glyph set and its display sequence live in one place.
+STANDARD_ICON_NAMES = [
 	'cloud',
 	'drizzle',
 	'fog',
@@ -27,8 +30,8 @@ STANDARD_ICON_NAMES = {
 	'snow',
 	'sun',
 	'sun_clouds',
-	'thunderstorm'
-}
+	'thunderstorm',
+]
 
 OWM_ICON_NAMES = {
 	'01d': 'sun',

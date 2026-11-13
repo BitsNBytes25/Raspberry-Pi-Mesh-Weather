@@ -35,10 +35,10 @@ _OWM_CODES = {
 
 def test_standard_names_match_expected():
 	"""
-The module public standard-name set must match the expected names, so a
+The module's public standard-name list must match the expected names, so a
 future change to either side is caught here rather than silently.
 	"""
-	assert STANDARD_ICON_NAMES == _STANDARD_NAMES
+	assert set(STANDARD_ICON_NAMES) == _STANDARD_NAMES
 
 
 def test_both_maps_are_keyed_by_standard_names():
@@ -46,8 +46,8 @@ def test_both_maps_are_keyed_by_standard_names():
 Both glyph sets must be keyed exactly by the standard names, so the
 library is decoupled from any one feed codes.
 	"""
-	assert set(WEATHER_ICONS_MODERN) == STANDARD_ICON_NAMES
-	assert set(WEATHER_ICONS_COMPATIBLE) == STANDARD_ICON_NAMES
+	assert set(WEATHER_ICONS_MODERN) == set(STANDARD_ICON_NAMES)
+	assert set(WEATHER_ICONS_COMPATIBLE) == set(STANDARD_ICON_NAMES)
 	for name in STANDARD_ICON_NAMES:
 		assert WEATHER_ICONS_MODERN[name], 'empty glyph for ' + repr(name)
 		assert WEATHER_ICONS_COMPATIBLE[name], 'empty glyph for ' + repr(name)
