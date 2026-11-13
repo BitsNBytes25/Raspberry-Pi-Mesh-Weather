@@ -329,7 +329,7 @@ def test_forecast_command_evening_spills_into_tomorrow(mocker):
 	assert result.success is True
 	assert result.has_data is True
 	assert result.message == (
-		'Forecast for cbus: Light rain until 3A, then overcast clouds\n'
+		'Forecast for cbus: Light rain until 3A\n'
 		'🌧️  9P: 10°C/49°F\n'
 		'🌧️  12A: 7°C/45°F\n'
 		'☁️  3A: 5°C/41°F\n'
@@ -348,7 +348,7 @@ def test_forecast_command_morning_all_today(mocker):
 
 	assert result.success is True
 	assert result.message == (
-		'Forecast for cbus: Light rain until 12P, then broken clouds\n'
+		'Forecast for cbus: Light rain until 12P\n'
 		'🌧️  9A: 10°C/49°F\n'
 		'☁️  12P: 4°C/39°F\n'
 		'☁️  3P: 10°C/50°F'
@@ -385,7 +385,7 @@ def test_forecast_command_around_when_calm_then_active(mocker):
 
 
 def test_forecast_command_active_then_calm_uses_until(mocker):
-	# Active now clearing to calm -> standard two-state phrasing, not "around".
+	# Active now clearing to calm -> single-state "until" phrasing, not "around".
 	entries = [
 		{'hour': 21, 'date': '2026-11-13', 'temp': 5.0, 'icon': '🌧️', 'description': 'light rain'},
 		{'hour': 7, 'date': '2026-11-14', 'temp': 1.0, 'icon': '☀️', 'description': 'clear sky'},
@@ -394,7 +394,7 @@ def test_forecast_command_active_then_calm_uses_until(mocker):
 
 	assert result.success is True
 	assert result.message == (
-		'Forecast for cbus: Light rain until 7A, then clear sky\n'
+		'Forecast for cbus: Light rain until 7A\n'
 		'🌧️  9P: 5°C/41°F\n'
 		'☀️  7A: 1°C/34°F'
 	)
@@ -411,9 +411,48 @@ def test_forecast_command_single_state(mocker):
 	assert result.success is True
 	assert result.message == (
 		'Forecast for cbus: Clear sky\n'
-		'☀️  9A: 9.5°C/49°F\n'
-		'☀️  12P: 8.1°C/47°F\n'
-		'☀️  3P: 9.9°C/50°F'
+		'☀️  9A: 10°C/49°F\n'
+		'☀️  12P: 8°C/47°F\n'
+		'☀️  3P: 10°C/50°F'
+	)
+
+
+def test_forecast_command_skips_calm_to_first_notable(mocker):
+	# Calm now, calm again, then a noteworthy event -> skip calm states and
+	# lead with the first active state (not the second calm one).
+	entries = [
+		{'hour': 21, 'date': '2026-11-13', 'temp': 8.0, 'icon': '☀️', 'description': 'clear sky'},
+		{'hour': 0, 'date': '2026-11-14', 'temp': 7.0, 'icon': '☁️', 'description': 'broken clouds'},
+		{'hour': 3, 'date': '2026-11-14', 'temp': 4.0, 'icon': '🌧️', 'description': 'light rain'},
+		{'hour': 6, 'date': '2026-11-14', 'temp': 4.0, 'icon': '🌧️', 'description': 'light rain'},
+	]
+	result = _patch_forecast_cmd(mocker, entries)
+
+	assert result.success is True
+	assert result.message == (
+		'Forecast for cbus: Light rain around 3A\n'
+		'☀️  9P: 8°C/46°F\n'
+		'☁️  12A: 7°C/45°F\n'
+		'🌧️  3A: 4°C/39°F\n'
+		'🌧️  6A: 4°C/39°F'
+	)
+
+
+def test_forecast_command_all_calm_reports_current(mocker):
+	# No noteworthy weather at all -> just describe the current state.
+	entries = [
+		{'hour': 21, 'date': '2026-11-13', 'temp': 8.0, 'icon': '☀️', 'description': 'clear sky'},
+		{'hour': 0, 'date': '2026-11-14', 'temp': 7.0, 'icon': '☁️', 'description': 'few clouds'},
+		{'hour': 3, 'date': '2026-11-14', 'temp': 6.0, 'icon': '☁️', 'description': 'overcast clouds'},
+	]
+	result = _patch_forecast_cmd(mocker, entries)
+
+	assert result.success is True
+	assert result.message == (
+		'Forecast for cbus: Clear sky\n'
+		'☀️  9P: 8°C/46°F\n'
+		'☁️  12A: 7°C/45°F\n'
+		'☁️  3A: 6°C/43°F'
 	)
 
 

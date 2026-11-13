@@ -68,14 +68,13 @@ def _temp_label(entry: dict) -> str:
 
 def _forecast_summary(entries: list[dict]) -> str:
 	"""
-	Build a compact two-state narrative from the chronological entries.
+	Build a compact single-state narrative from the chronological entries.
 
-	Consecutive entries sharing a description are grouped and the narrative
-	is capped at two states (the current state plus the first change).
-	Returns a one-line narrative:
-	  - 'Light rain until 7 AM, then broken clouds'  (general)
-	  - 'Light rain around 7 AM'                     (calm now, active arriving)
-	  - 'Clear sky'                                  (single state)
+	Only one weather state is described — the first noteworthy one. Calm
+	cloud-cover states are skipped in favor of any active weather:
+	  - 'Light rain'                  (single state for the whole window)
+	  - 'Light rain until 3A'         (active now, ends when it changes)
+	  - 'Light rain around 7A'        (calm now, active arriving at N)
 	"""
 	# Run-length group the entries by description (they are chronological).
 	runs = []
@@ -90,16 +89,16 @@ def _forecast_summary(entries: list[dict]) -> str:
 	if len(runs) == 1:
 		return _cap_first(a_desc)
 
-	b_desc, b_entry = runs[1]
-	change_label = _time_label(b_entry['hour'])
-	calm_now = a_desc in CALM_WEATHER
-	active_incoming = b_desc not in CALM_WEATHER
+	if a_desc in CALM_WEATHER:
+		# Calm skies now; lead with the first noteworthy weather event.
+		for b_desc, b_entry in runs[1:]:
+			if b_desc not in CALM_WEATHER:
+				return _cap_first(b_desc) + f" around {_time_label(b_entry['hour'])}"
+		# No noteworthy weather; everything is calm.
+		return _cap_first(a_desc)
 
-	if calm_now and active_incoming:
-		# Current skies are calm; the useful part is the incoming weather.
-		return _cap_first(b_desc) + f" around {change_label}"
-
-	return _cap_first(a_desc) + f" until {change_label}, then {b_desc}"
+	# Notable weather now; it lasts until the next change.
+	return _cap_first(a_desc) + f" until {_time_label(runs[1][1]['hour'])}"
 
 
 @command('forecast', direct=True, group=True)
