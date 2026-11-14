@@ -43,3 +43,4 @@ from .reboot import cmd_reboot
 from .temp import cmd_temp, get_heat_index
 from .uptime import cmd_uptime
 from .wake import cmd_wake
+from .wind import cmd_wind

@@ -23,6 +23,7 @@ from raspberry_pi_mesh_weather.libs.humidity import get_humidity
 from raspberry_pi_mesh_weather.libs.icon_map import get_icon
 from raspberry_pi_mesh_weather.libs.pressure import get_pressure, get_pressure_change
 from raspberry_pi_mesh_weather.libs.temperature import get_temperature
+from raspberry_pi_mesh_weather.libs.wind import get_wind_compass, get_wind_speed
 
 
 def _weather_icon(temp: float | None, humidity: float | None, pressure_change: float | None) -> str:
@@ -59,6 +60,8 @@ def cmd_all_sensors(target: str | None = None) -> CommandResponse:
 	humidity = get_humidity()
 	pressure = get_pressure()
 	pressure_change = get_pressure_change()
+	wind_speed = get_wind_speed()
+	wind_compass = get_wind_compass()
 	sensors = []
 
 	if temp is not None:
@@ -77,6 +80,9 @@ def cmd_all_sensors(target: str | None = None) -> CommandResponse:
 			sensors.append(f"{pressure:.1f} hPa ({trend})")
 		else:
 			sensors.append(f"{pressure:.1f} hPa")
+	if wind_speed is not None:
+		compass = f' {wind_compass}' if wind_compass else ''
+		sensors.append(f"wind {wind_speed:.0f} m/s{compass}")
 
 	if len(sensors) > 0:
 		icon = _weather_icon(temp, humidity, pressure_change)

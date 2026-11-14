@@ -2,102 +2,119 @@ import pytest
 
 from raspberry_pi_mesh_weather.libs import commands
 from raspberry_pi_mesh_weather.libs import icon_map
-from raspberry_pi_mesh_weather.libs.commands import all_sensors, forecast, temp as temp_module
+from raspberry_pi_mesh_weather.libs.commands import (
+	all_sensors,
+	forecast,
+	temp as temp_module,
+	wind as wind_command_module,
+)
 from raspberry_pi_mesh_weather.libs import open_weather_map
 from raspberry_pi_mesh_weather.libs.system_state import state
 from raspberry_pi_mesh_weather.libs.temperature import get_temperature
 from raspberry_pi_mesh_weather.libs.pressure import get_pressure, get_pressure_change
 from raspberry_pi_mesh_weather.libs.humidity import get_humidity
+from raspberry_pi_mesh_weather.libs.wind import get_wind_compass, get_wind_gust, get_wind_speed
 
 
-def _patch_readings(mocker, temp, humidity, pressure, change, label):
+def _patch_readings(
+	mocker,
+	temp,
+	humidity,
+	pressure,
+	change,
+	label,
+	wind_speed=None,
+	wind_compass=None,
+):
 	mocker.patch.object(all_sensors, 'get_temperature', return_value=temp)
 	mocker.patch.object(all_sensors, 'get_humidity', return_value=humidity)
 	mocker.patch.object(all_sensors, 'get_pressure', return_value=pressure)
 	mocker.patch.object(all_sensors, 'get_pressure_change', return_value=change)
+	mocker.patch.object(all_sensors, 'get_wind_speed', return_value=wind_speed)
+	mocker.patch.object(all_sensors, 'get_wind_compass', return_value=wind_compass)
 	location = mocker.patch.object(all_sensors, 'config')
 	location.location.label = label
 	return commands.cmd_all_sensors(None)
 
 
 def test_all_sensors_all_readings_stable(mocker):
-	result = _patch_readings(mocker, 22.1, 45.3, 1012.3, 0, 'cbus')
+	result = _patch_readings(mocker, 22.1, 45.3, 1012.3, 0, 'cbus', wind_speed=4.5, wind_compass='NNW')
 
 	assert result.success is True
 	assert result.has_data is True
 	assert result.message == (
 		'☀ Weather in cbus:\n'
-		'22.1°C (72°F) | 45.3% humidity | 1012.3 hPa (stable)'
+		'22.1°C (72°F) | 45.3% humidity | 1012.3 hPa (stable) | wind 4 m/s NNW'
 	)
 
 
 def test_all_sensors_pressure_rising(mocker):
-	result = _patch_readings(mocker, 23.5, 40.0, 1012.7, 1, 'cbus')
+	result = _patch_readings(mocker, 23.5, 40.0, 1012.7, 1, 'cbus', wind_speed=4.5, wind_compass='NNW')
 
 	assert result.success is True
 	assert result.message == (
 		'☀ Weather in cbus:\n'
-		'23.5°C (74°F) | 40.0% humidity | 1012.7 hPa (rising)'
+		'23.5°C (74°F) | 40.0% humidity | 1012.7 hPa (rising) | wind 4 m/s NNW'
 	)
 
 
 def test_all_sensors_pressure_falling(mocker):
-	result = _patch_readings(mocker, 21.0, 55.0, 1009.8, -1, 'cbus')
+	result = _patch_readings(mocker, 21.0, 55.0, 1009.8, -1, 'cbus', wind_speed=4.5, wind_compass='NNW')
 
 	assert result.success is True
 	assert result.message == (
 		'☔ Weather in cbus:\n'
-		'21.0°C (70°F) | 55.0% humidity | 1009.8 hPa (falling)'
+		'21.0°C (70°F) | 55.0% humidity | 1009.8 hPa (falling) | wind 4 m/s NNW'
 	)
 
 
 def test_all_sensors_high_humidity_cloudy(mocker):
-	result = _patch_readings(mocker, 29.5, 75.0, 1011.0, 0, 'cbus')
+	result = _patch_readings(mocker, 29.5, 75.0, 1011.0, 0, 'cbus', wind_speed=4.5, wind_compass='NNW')
 
 	assert result.success is True
 	assert result.message == (
 		'☀ Weather in cbus:\n'
-		'29.5°C (85°F) | 75.0% humidity | 1011.0 hPa (stable)'
+		'29.5°C (85°F) | 75.0% humidity | 1011.0 hPa (stable) | wind 4 m/s NNW'
 	)
 
 
 def test_all_sensors_freezing_takes_precedence(mocker):
-	result = _patch_readings(mocker, -2.5, 30.0, 1012.0, 1, 'cbus')
+	result = _patch_readings(mocker, -2.5, 30.0, 1012.0, 1, 'cbus', wind_speed=4.5, wind_compass='NNW')
 
 	assert result.success is True
 	assert result.message == (
 		'❄❄ Weather in cbus:\n'
-		'-2.5°C (28°F) | 30.0% humidity | 1012.0 hPa (rising)'
+		'-2.5°C (28°F) | 30.0% humidity | 1012.0 hPa (rising) | wind 4 m/s NNW'
 	)
 
 
 def test_all_sensors_missing_humidity(mocker):
-	result = _patch_readings(mocker, 21.0, None, 1012.3, 0, 'cbus')
+	result = _patch_readings(mocker, 21.0, None, 1012.3, 0, 'cbus', wind_speed=4.5, wind_compass='NNW')
 
 	assert result.success is True
 	assert result.message == (
 		'☀ Weather in cbus:\n'
-		'21.0°C (70°F) | 1012.3 hPa (stable)'
+		'21.0°C (70°F) | 1012.3 hPa (stable) | wind 4 m/s NNW'
 	)
 
 
 def test_all_sensors_missing_location_label(mocker):
-	result = _patch_readings(mocker, 20.0, 50.0, 1013.0, 0, '')
+	result = _patch_readings(mocker, 20.0, 50.0, 1013.0, 0, '', wind_speed=4.5, wind_compass='NNW')
 
 	assert result.success is True
 	assert result.message == (
 		'☀ Current weather here:\n'
-		'20.0°C (68°F) | 50.0% humidity | 1013.0 hPa (stable)'
+		'20.0°C (68°F) | 50.0% humidity | 1013.0 hPa (stable) | wind 4 m/s NNW'
 	)
 
 
 def test_all_sensors_missing_temperature(mocker):
-	result = _patch_readings(mocker, None, 78.0, 1010.5, -1, 'cbus')
+	result = _patch_readings(mocker, None, 78.0, 1010.5, -1, 'cbus', wind_speed=4.5, wind_compass='NNW')
 
 	assert result.success is True
 	assert result.message == (
 		'☔ Weather in cbus:\n'
-		'78.0% humidity | 1010.5 hPa (falling)'
+		'78.0% humidity | 1010.5 hPa (falling) | wind 4 m/s NNW'
 	)
 
 
@@ -110,13 +127,24 @@ def test_all_sensors_no_readings(mocker):
 
 
 def test_all_sensors_no_pressure_change(mocker):
-	result = _patch_readings(mocker, 22.1, 45.3, 1012.3, None, 'cbus')
+	result = _patch_readings(mocker, 22.1, 45.3, 1012.3, None, 'cbus', wind_speed=4.5, wind_compass='NNW')
 
 	assert result.success is True
 	assert result.has_data is True
 	assert result.message == (
 		'☀ Weather in cbus:\n'
-		'22.1°C (72°F) | 45.3% humidity | 1012.3 hPa'
+		'22.1°C (72°F) | 45.3% humidity | 1012.3 hPa | wind 4 m/s NNW'
+	)
+
+
+def test_all_sensors_wind_without_compass(mocker):
+	result = _patch_readings(mocker, 22.1, 45.3, 1012.3, 0, 'cbus', wind_speed=4.5, wind_compass=None)
+
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == (
+		'☀ Weather in cbus:\n'
+		'22.1°C (72°F) | 45.3% humidity | 1012.3 hPa (stable) | wind 4 m/s'
 	)
 
 
@@ -683,3 +711,131 @@ def test_temp_no_data_when_sensor_and_owm_down(mocker):
 	assert result.success is False
 	assert result.has_data is False
 	assert result.message == 'Sorry, but no temperature is available right now.'
+
+
+# --- wind (OpenWeatherMap-only) ---------------------------------------------
+#
+# There is no local wind sensor, so the wind getters read the OWM current
+# conditions cache directly (no state lookup), and the direction is shown as
+# a 16-point compass shorthand.
+
+WIND_CURRENT = {
+	'temp': 12.0,
+	'feels_like': 10.0,
+	'pressure': 1005.4,
+	'humidity': 81,
+	'dt': 1794517200,
+	'wind_speed': 4.5,
+	'wind_deg': 320,
+	'wind_gust': 9.0,
+}
+
+
+def test_wind_compass_cardinal_points(mocker):
+	for deg, expected in [(0, 'N'), (90, 'E'), (180, 'S'), (270, 'W')]:
+		mocker.patch.object(
+			open_weather_map,
+			'get_current_conditions',
+			return_value={'wind_deg': deg},
+		)
+		assert get_wind_compass() == expected
+
+
+def test_wind_compass_intercardinal_points(mocker):
+	for deg, expected in [
+		(11.25, 'NNE'),
+		(67.5, 'ENE'),
+		(157.5, 'SSE'),
+		(247.5, 'WSW'),
+		(337.5, 'NNW'),
+	]:
+		mocker.patch.object(
+			open_weather_map,
+			'get_current_conditions',
+			return_value={'wind_deg': deg},
+		)
+		assert get_wind_compass() == expected
+
+
+def test_wind_compass_none_without_deg(mocker):
+	mocker.patch.object(
+		open_weather_map,
+		'get_current_conditions',
+		return_value={'wind_speed': 4.5},
+	)
+	assert get_wind_compass() is None
+
+
+def test_wind_compass_none_when_no_conditions(mocker):
+	mocker.patch.object(open_weather_map, 'get_current_conditions', return_value=None)
+	assert get_wind_compass() is None
+
+
+def test_get_wind_speed_reads_owm(mocker):
+	owm = mocker.patch.object(open_weather_map, 'get_current_conditions', return_value=WIND_CURRENT)
+	assert get_wind_speed() == 4.5
+	owm.assert_called_once()
+
+
+def test_get_wind_gust_reads_owm(mocker):
+	mocker.patch.object(open_weather_map, 'get_current_conditions', return_value=WIND_CURRENT)
+	assert get_wind_gust() == 9.0
+
+
+def test_wind_getters_none_when_no_conditions(mocker):
+	mocker.patch.object(open_weather_map, 'get_current_conditions', return_value=None)
+	assert get_wind_speed() is None
+	assert get_wind_gust() is None
+
+
+def _patch_wind_cmd(mocker, speed, gust, compass):
+	mocker.patch.object(wind_command_module, 'get_wind_speed', return_value=speed)
+	mocker.patch.object(wind_command_module, 'get_wind_gust', return_value=gust)
+	mocker.patch.object(wind_command_module, 'get_wind_compass', return_value=compass)
+	return commands.cmd_wind(None)
+
+
+def test_wind_command_all_available(mocker):
+	result = _patch_wind_cmd(mocker, 4.5, 9.0, 'NNW')
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == 'Current wind here is 4.5 m/s NNW (gust 9.0 m/s)'
+
+
+def test_wind_command_speed_only(mocker):
+	result = _patch_wind_cmd(mocker, 4.5, None, None)
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == 'Current wind here is 4.5 m/s'
+
+
+def test_wind_command_missing_speed(mocker):
+	result = _patch_wind_cmd(mocker, None, None, None)
+	assert result.success is True
+	assert result.has_data is False
+	assert result.message == 'Sorry, but no wind available'
+
+
+def test_all_owm_with_wind_shows_wind(mocker):
+	owm = {
+		'temp': 12.0,
+		'feels_like': 10.0,
+		'pressure': 1005.4,
+		'humidity': 81,
+		'dt': 1794517200,
+		'wind_speed': 4.5,
+		'wind_deg': 0,
+		'wind_gust': 9.0,
+	}
+	mocker.patch.object(state, 'get', return_value=None)
+	mocker.patch.object(state, 'get_earliest', return_value=None)
+	mocker.patch.object(open_weather_map, 'get_current_conditions', return_value=owm)
+	location = mocker.patch.object(all_sensors, 'config')
+	location.location.label = 'cbus'
+	result = commands.cmd_all_sensors(None)
+
+	assert result.success is True
+	assert result.message == (
+		'☀ Weather in cbus:\n'
+		'12.0°C (54°F) | 81.0% humidity | 1005.4 hPa | wind 4 m/s N'
+	)

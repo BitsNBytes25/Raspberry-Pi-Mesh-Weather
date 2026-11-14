@@ -202,6 +202,9 @@ def test_get_current_conditions_normalizes(columbus_current, forecast, mocker):
 		'pressure': 1005.4,
 		'humidity': 81,
 		'dt': 1794517200,
+		'wind_speed': 4.5,
+		'wind_deg': 320,
+		'wind_gust': 9.0,
 	}
 
 
@@ -247,6 +250,9 @@ def test_module_accessor_normalizes(columbus_current, reset_shared_client, mocke
 		'pressure': 1005.4,
 		'humidity': 81,
 		'dt': 1794517200,
+		'wind_speed': 4.5,
+		'wind_deg': 320,
+		'wind_gust': 9.0,
 	}
 	assert open_weather_map.requests.get.call_count == 1
 
