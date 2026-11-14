@@ -18,10 +18,19 @@
 # along with this program.  If not, see <https://gnu.org>.
 
 from raspberry_pi_mesh_weather.libs.system_state import state
+from raspberry_pi_mesh_weather.libs import open_weather_map
 
 
 def get_temperature():
-	return state.get('temperature')
+	"""
+	Get the current temperature, falling back to OpenWeatherMap current
+	conditions when the local sensor is unavailable.
+	"""
+	temp = state.get('temperature')
+	if temp is not None:
+		return temp
+	conditions = open_weather_map.get_current_conditions()
+	return conditions['temp'] if conditions else None
 
 
 def set_temperature(temp):

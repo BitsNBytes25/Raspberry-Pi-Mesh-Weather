@@ -3,6 +3,11 @@ import pytest
 from raspberry_pi_mesh_weather.libs import commands
 from raspberry_pi_mesh_weather.libs import icon_map
 from raspberry_pi_mesh_weather.libs.commands import all_sensors, forecast, temp as temp_module
+from raspberry_pi_mesh_weather.libs import open_weather_map
+from raspberry_pi_mesh_weather.libs.system_state import state
+from raspberry_pi_mesh_weather.libs.temperature import get_temperature
+from raspberry_pi_mesh_weather.libs.pressure import get_pressure, get_pressure_change
+from raspberry_pi_mesh_weather.libs.humidity import get_humidity
 
 
 def _patch_readings(mocker, temp, humidity, pressure, change, label):
@@ -102,6 +107,17 @@ def test_all_sensors_no_readings(mocker):
 	assert result.success is True
 	assert result.has_data is False
 	assert result.message == 'Sorry, but no sensor data is available'
+
+
+def test_all_sensors_no_pressure_change(mocker):
+	result = _patch_readings(mocker, 22.1, 45.3, 1012.3, None, 'cbus')
+
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == (
+		'☀️ Weather in cbus:\n'
+		'22.1°C (72°F) | 45.3% humidity | 1012.3 hPa'
+	)
 
 
 def _patch_temp_readings(mocker, temp, humidity, change):
@@ -221,6 +237,14 @@ def test_temp_comfortable_falling_dry(mocker):
 	assert result.success is True
 	assert result.has_data is True
 	assert result.message == "☁️ Comfortable and dry at 22°C (72°F) but it may storm soon."
+
+
+def test_temp_comfortable_no_pressure_change(mocker):
+	result = _patch_temp_readings(mocker, 22.0, 50.0, None)
+
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == "It's perfectly comfortable at 22°C (72°F)."
 
 
 def test_temp_warm_sunny(mocker):
@@ -517,3 +541,145 @@ def test_icons_modern_style(mocker):
 	assert result.success is True
 	assert result.has_data is True
 	assert result.message == '☁️ 🌦️ 🌫️ 🌙️ 🌧️ ❄️ ☀️ ⛅️ ⛈️'
+
+
+# --- current-conditions fallback -------------------------------------------
+#
+# The sensor getters fall back to OpenWeatherMap current conditions when the
+# local sensor reading is unavailable (the state entry is None).
+
+OWM_CURRENT = {
+	'temp': 12.0,
+	'feels_like': 10.0,
+	'pressure': 1005.4,
+	'humidity': 81,
+	'dt': 1794517200,
+}
+
+
+def test_get_temperature_prefers_sensor(mocker):
+	mocker.patch.object(state, 'get', return_value=18.5)
+	owm = mocker.patch.object(open_weather_map, 'get_current_conditions', return_value=OWM_CURRENT)
+	assert get_temperature() == 18.5
+	owm.assert_not_called()
+
+
+def test_get_temperature_falls_back_to_owm(mocker):
+	mocker.patch.object(state, 'get', return_value=None)
+	owm = mocker.patch.object(open_weather_map, 'get_current_conditions', return_value=OWM_CURRENT)
+	assert get_temperature() == 12.0
+	owm.assert_called_once()
+
+
+def test_get_temperature_none_when_both_down(mocker):
+	mocker.patch.object(state, 'get', return_value=None)
+	mocker.patch.object(open_weather_map, 'get_current_conditions', return_value=None)
+	assert get_temperature() is None
+
+
+def test_get_pressure_falls_back_to_owm(mocker):
+	mocker.patch.object(state, 'get', return_value=None)
+	mocker.patch.object(open_weather_map, 'get_current_conditions', return_value=OWM_CURRENT)
+	assert get_pressure() == 1005.4
+
+
+def test_get_humidity_falls_back_to_owm(mocker):
+	mocker.patch.object(state, 'get', return_value=None)
+	mocker.patch.object(open_weather_map, 'get_current_conditions', return_value=OWM_CURRENT)
+	assert get_humidity() == 81
+
+
+# --- pressure change --------------------------------------------------------
+
+
+def test_get_pressure_change_none_without_local_data(mocker):
+	mocker.patch.object(state, 'get_earliest', return_value=None)
+	mocker.patch.object(state, 'get', return_value=None)
+	assert get_pressure_change() is None
+
+
+def test_get_pressure_change_rising(mocker):
+	mocker.patch.object(state, 'get_earliest', return_value=1009.0)
+	mocker.patch.object(state, 'get', return_value=1012.0)
+	assert get_pressure_change() == 1.0
+
+
+def test_get_pressure_change_falling(mocker):
+	mocker.patch.object(state, 'get_earliest', return_value=1012.0)
+	mocker.patch.object(state, 'get', return_value=1009.0)
+	assert get_pressure_change() == -1.0
+
+
+def test_get_pressure_change_stable(mocker):
+	mocker.patch.object(state, 'get_earliest', return_value=1010.0)
+	mocker.patch.object(state, 'get', return_value=1010.5)
+	assert get_pressure_change() == 0.0
+
+
+def test_all_uses_owm_when_sensors_down(mocker):
+	mocker.patch.object(state, 'get', return_value=None)
+	mocker.patch.object(state, 'get_earliest', return_value=None)
+	mocker.patch.object(open_weather_map, 'get_current_conditions', return_value=OWM_CURRENT)
+	location = mocker.patch.object(all_sensors, 'config')
+	location.location.label = 'cbus'
+	result = commands.cmd_all_sensors(None)
+
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == (
+		'⛅ Weather in cbus:\n'
+		'12.0°C (54°F) | 81.0% humidity | 1005.4 hPa'
+	)
+
+
+def test_temp_uses_owm_when_sensor_down(mocker):
+	mocker.patch.object(state, 'get', return_value=None)
+	mocker.patch.object(open_weather_map, 'get_current_conditions', return_value=OWM_CURRENT)
+	result = commands.cmd_temp(None)
+
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == "☔ Damp and chilly, it's currently 12°C (54°F). Grab a waterproof coat."
+
+
+def test_pressure_uses_owm_when_sensor_down(mocker):
+	mocker.patch.object(state, 'get', return_value=None)
+	mocker.patch.object(state, 'get_earliest', return_value=None)
+	mocker.patch.object(open_weather_map, 'get_current_conditions', return_value=OWM_CURRENT)
+	result = commands.cmd_pressure(None)
+
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == 'Pressure is 1005.4hPa'
+
+
+def test_humidity_owm_int_formats_without_trailing_zero(mocker):
+	# OWM returns humidity as an int; '%%s' % round(int, 1) keeps it an int,
+	# so the command renders '81%' (not '81.0%').
+	mocker.patch.object(state, 'get', return_value=None)
+	mocker.patch.object(open_weather_map, 'get_current_conditions', return_value=OWM_CURRENT)
+	result = commands.cmd_humidity(None)
+
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == 'Current humidity here is 81%'
+
+
+def test_all_no_data_when_sensors_and_owm_down(mocker):
+	mocker.patch.object(state, 'get', return_value=None)
+	mocker.patch.object(open_weather_map, 'get_current_conditions', return_value=None)
+	result = commands.cmd_all_sensors(None)
+
+	assert result.success is True
+	assert result.has_data is False
+	assert result.message == 'Sorry, but no sensor data is available'
+
+
+def test_temp_no_data_when_sensor_and_owm_down(mocker):
+	mocker.patch.object(state, 'get', return_value=None)
+	mocker.patch.object(open_weather_map, 'get_current_conditions', return_value=None)
+	result = commands.cmd_temp(None)
+
+	assert result.success is False
+	assert result.has_data is False
+	assert result.message == 'Sorry, but no temperature is available right now.'

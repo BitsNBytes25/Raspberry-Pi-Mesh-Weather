@@ -18,10 +18,19 @@
 # along with this program.  If not, see <https://gnu.org>.
 
 from raspberry_pi_mesh_weather.libs.system_state import state
+from raspberry_pi_mesh_weather.libs import open_weather_map
 
 
 def get_humidity():
-	return state.get('humidity')
+	"""
+	Get the current humidity, falling back to OpenWeatherMap current
+	conditions when the local sensor is unavailable.
+	"""
+	humidity = state.get('humidity')
+	if humidity is not None:
+		return humidity
+	conditions = open_weather_map.get_current_conditions()
+	return conditions['humidity'] if conditions else None
 
 
 def set_humidity(humidity):

@@ -95,6 +95,7 @@ def test_fetch_data_returns_parsed_json(forecast, mocker):
 	mock_get.assert_called_once_with(
 		'http://api.openweathermap.org/data/2.5/forecast',
 		params={'a': 1},
+		timeout=5,
 	)
 
 
@@ -175,3 +176,99 @@ def test_get_daily_forecast_respects_compatible_icon_style(columbus_afternoon, m
 	# 10d (light rain) maps to the umbrella-with-droplets glyph in the
 	# widely-supported set instead of the colour emoji.
 	assert result[0]['icon'] == '\u2602'
+
+
+# --- get_current_conditions ---------------------------------------------------
+
+
+@pytest.fixture
+def reset_shared_client():
+	"""
+	Isolate the process-wide shared client between tests that use the
+	module-level get_current_conditions() accessor.
+	"""
+	open_weather_map._client = None
+	yield
+	open_weather_map._client = None
+
+
+def test_get_current_conditions_normalizes(columbus_current, forecast, mocker):
+	_patch_request(mocker, columbus_current)
+	result = forecast.get_current_conditions()
+
+	assert result == {
+		'temp': 12.0,
+		'feels_like': 10.0,
+		'pressure': 1005.4,
+		'humidity': 81,
+		'dt': 1794517200,
+	}
+
+
+def test_get_current_conditions_cached_within_ttl(columbus_current, forecast, mocker):
+	_patch_request(mocker, columbus_current)
+	first = forecast.get_current_conditions()
+	second = forecast.get_current_conditions()
+
+	assert first == second
+	# The second read is served from the in-memory cache, not the service.
+	assert open_weather_map.requests.get.call_count == 1
+
+
+def test_get_current_conditions_caches_failure(columbus_current, forecast, mocker):
+	_patch_request_failure(mocker)
+	assert forecast.get_current_conditions() is None
+	assert forecast.get_current_conditions() is None
+	# A failed fetch is cached too, so a downed network is not re-pounded.
+	assert open_weather_map.requests.get.call_count == 1
+
+
+def test_get_current_conditions_none_on_malformed(forecast, mocker):
+	_patch_request(mocker, {'cod': '401'})
+	assert forecast.get_current_conditions() is None
+
+
+def test_get_current_conditions_none_on_missing_main(forecast, mocker):
+	_patch_request(mocker, {})
+	assert forecast.get_current_conditions() is None
+
+
+# --- module-level shared accessor -------------------------------------------
+
+
+def test_module_accessor_normalizes(columbus_current, reset_shared_client, mocker):
+	_build_forecast(mocker)  # patch open_weather_map.config for the shared client
+	_patch_request(mocker, columbus_current)
+	result = open_weather_map.get_current_conditions()
+
+	assert result == {
+		'temp': 12.0,
+		'feels_like': 10.0,
+		'pressure': 1005.4,
+		'humidity': 81,
+		'dt': 1794517200,
+	}
+	assert open_weather_map.requests.get.call_count == 1
+
+
+def test_module_accessor_cached_within_ttl(columbus_current, reset_shared_client, mocker):
+	_build_forecast(mocker)
+	_patch_request(mocker, columbus_current)
+	first = open_weather_map.get_current_conditions()
+	second = open_weather_map.get_current_conditions()
+
+	assert first == second
+	# Single shared client, single cache, one service call.
+	assert open_weather_map.requests.get.call_count == 1
+
+
+def test_module_accessor_none_without_api_key(columbus_current, reset_shared_client, mocker):
+	_patch_request(mocker, columbus_current)
+	config = mocker.patch.object(open_weather_map, 'config')
+	config.weather.openweather_api_key = ''
+	config.location.lat = 39.96
+	config.location.lon = -83.0
+
+	# OpenWeatherMap() raises with no key, so the shared client is never built.
+	assert open_weather_map.get_current_conditions() is None
+	assert open_weather_map._client is None

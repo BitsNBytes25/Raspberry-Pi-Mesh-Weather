@@ -1,0 +1,48 @@
+{
+  "coord": {
+    "lon": -83.0,
+    "lat": 39.96
+  },
+  "weather": [
+    {
+      "id": 500,
+      "main": "Rain",
+      "description": "light rain",
+      "icon": "10d"
+    }
+  ],
+  "base": "stations",
+  "main": {
+    "temp": 12.0,
+    "feels_like": 10.0,
+    "temp_min": 8.5,
+    "temp_max": 13.2,
+    "pressure": 1008.4,
+    "sea_level": 1005.4,
+    "grnd_level": 979.4,
+    "humidity": 81,
+    "temp_kf": 9.35,
+    "dew_point": 10.1
+  },
+  "visibility": 4800,
+  "wind": {
+    "speed": 4.5,
+    "deg": 320,
+    "gust": 9.0
+  },
+  "clouds": {
+    "all": 90
+  },
+  "dt": 1794517200,
+  "sys": {
+    "type": 1,
+    "id": 4509177,
+    "message": 0,
+    "country": "US",
+    "sunrise": 1794485621,
+    "sunset": 1794521926
+  },
+  "id": 4509177,
+  "name": "Columbus",
+  "cod": "200"
+}

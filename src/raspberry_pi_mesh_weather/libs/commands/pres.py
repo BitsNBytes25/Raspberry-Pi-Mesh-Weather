@@ -22,6 +22,7 @@ from raspberry_pi_mesh_weather.libs.pressure import get_pressure, get_pressure_c
 
 
 @command('pres', direct=True, group=True)
+@command('pressure', direct=True, group=True)
 def cmd_pressure(target: str | None = None) -> CommandResponse:
 	pressure = get_pressure()
 	pressure_change = get_pressure_change()
@@ -30,6 +31,10 @@ def cmd_pressure(target: str | None = None) -> CommandResponse:
 		return CommandResponseError('Sorry, but no pressure is available right now.')
 
 	pressure = round(pressure, 2)
+
+	if pressure_change is None:
+		# No local pressure data, so no trend to report.
+		return CommandResponseSuccess(f"Pressure is {pressure}hPa")
 
 	if pressure_change == 1:
 		return CommandResponseSuccess(f"Pressure has rose to {pressure}hPa!  Expect sunny weather.")

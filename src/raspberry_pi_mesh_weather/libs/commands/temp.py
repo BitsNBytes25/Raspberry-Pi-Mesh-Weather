@@ -43,6 +43,7 @@ def get_heat_index(temp_c, humidity):
 
 
 @command('temp', direct=True, group=True)
+@command('temperature', direct=True, group=True)
 def cmd_temp(target: str | None = None) -> CommandResponse:
 	temp = get_temperature()
 	humidity = get_humidity()
@@ -80,18 +81,20 @@ def cmd_temp(target: str | None = None) -> CommandResponse:
 			return CommandResponseSuccess(f"A bit chilly right now at {temps}.")
 
 		if 18 <= real_temp <= 24:
-			if pressure_change == 0 or pressure_change == 1:
-				if 30 <= humidity <= 60:
-					return CommandResponseSuccess(f"☀️ Perfectly comfortable at {temps}.  Go out for a nice walk.")
-				if humidity > 60:
-					return CommandResponseSuccess(f"☁️ It's a comfortable {temps} but is rather sticky.")
-				return CommandResponseSuccess(f"☀️ Perfectly comfortable and dry at {temps}.  Go out for a nice walk.")
-			else:
+			if pressure_change == -1:
 				if 30 <= humidity <= 60:
 					return CommandResponseSuccess(f"☁️ Perfectly comfortable at {temps} but it may storm soon.")
 				if humidity > 60:
 					return CommandResponseSuccess(f"☔ It's a comfortable {temps} but is rather wet out there.")
 				return CommandResponseSuccess(f"☁️ Comfortable and dry at {temps} but it may storm soon.")
+			if pressure_change is None:
+				# No local pressure data to base a trend on.
+				return CommandResponseSuccess(f"It's perfectly comfortable at {temps}.")
+			if 30 <= humidity <= 60:
+				return CommandResponseSuccess(f"☀️ Perfectly comfortable at {temps}.  Go out for a nice walk.")
+			if humidity > 60:
+				return CommandResponseSuccess(f"☁️ It's a comfortable {temps} but is rather sticky.")
+			return CommandResponseSuccess(f"☀️ Perfectly comfortable and dry at {temps}.  Go out for a nice walk.")
 
 		if 24 < real_temp <= 29:
 			hi = round(get_heat_index(real_temp, humidity))

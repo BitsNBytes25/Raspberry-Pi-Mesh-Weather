@@ -24,7 +24,7 @@ from raspberry_pi_mesh_weather.libs.pressure import get_pressure, get_pressure_c
 from raspberry_pi_mesh_weather.libs.temperature import get_temperature
 
 
-def _weather_icon(temp: float | None, humidity: float | None, pressure_change: float) -> str:
+def _weather_icon(temp: float | None, humidity: float | None, pressure_change: float | None) -> str:
 	"""
 	Pick a friendly emoji to represent the current local conditions.
 
@@ -65,13 +65,16 @@ def cmd_all_sensors(target: str | None = None) -> CommandResponse:
 	if humidity is not None:
 		sensors.append(f"{humidity:.1f}% humidity")
 	if pressure is not None:
-		if pressure_change == 1:
-			trend = 'rising'
-		elif pressure_change == -1:
-			trend = 'falling'
+		if pressure_change is not None:
+			if pressure_change == 1:
+				trend = 'rising'
+			elif pressure_change == -1:
+				trend = 'falling'
+			else:
+				trend = 'stable'
+			sensors.append(f"{pressure:.1f} hPa ({trend})")
 		else:
-			trend = 'stable'
-		sensors.append(f"{pressure:.1f} hPa ({trend})")
+			sensors.append(f"{pressure:.1f} hPa")
 
 	if len(sensors) > 0:
 		icon = _weather_icon(temp, humidity, pressure_change)
