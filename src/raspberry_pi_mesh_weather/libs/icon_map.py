@@ -11,7 +11,7 @@ option:
   * modern     - colour emoji.  Best on modern clients, but some glyphs are
                  absent from limited fonts and render as "*" .
   * compatible - basic symbols from the U+2600-U+27BF Unicode block, the widest
-                 range of supported fonts.  Safe on every mesh device.
+                 range of supported fonts.  Safe on (hopefully) every mesh device.
 
 `get_icon(name)` is the source-agnostic API.  `get_weather_icon()` is the
 OpenWeatherMap-specific convenience bridge used by the forecast client."""
@@ -80,6 +80,8 @@ WEATHER_ICONS_MODERN = {
 	'fog': '🌫️'
 }
 
+# These icons are tested working on the T-Deck with Wadamesh
+# - https://github.com/ALLFATHER-BV/wadamesh
 WEATHER_ICONS_COMPATIBLE = {
 	'sun': '☀',          # U+2600 (Black Sun with Rays - worked in your compatible set)
 	'moon': '🌙️',          # Simple text character (replaces failing crescent ☾)
@@ -93,7 +95,9 @@ WEATHER_ICONS_COMPATIBLE = {
 }
 
 def _icon_maps():
-	"""Return the glyph set for the currently configured icon style."""
+	"""
+	Return the glyph set for the currently configured icon style.
+	"""
 
 	icon_maps = {
 		'modern': WEATHER_ICONS_MODERN,
@@ -102,20 +106,24 @@ def _icon_maps():
 	return icon_maps.get(config.general.icon_style, WEATHER_ICONS_COMPATIBLE)
 
 def get_icon(name):
-	"""Resolve a standard icon name to a display glyph in the active style.
+	"""
+	Resolve a standard icon name to a display glyph in the active style.
 
-:param name: one of the standard icon names (e.g. "rain").
-:return: the glyph to display, or an empty string if the name is unknown."""
+	:param name: one of the standard icon names (e.g. "rain").
+	:return: the glyph to display, or an empty string if the name is unknown.
+	"""
 
 	return _icon_maps().get(name, '')
 
 def get_weather_icon(owm_code):
-	"""Resolve an OpenWeatherMap icon code to a display glyph.
+	"""
+	Resolve an OpenWeatherMap icon code to a display glyph.
 
-Translated through the standard icon names, so the glyph sets never
-need to know about OpenWeatherMap.
+	Translated through the standard icon names, so the glyph sets never
+	need to know about OpenWeatherMap.
 
-:param owm_code: OpenWeatherMap icon code (e.g. "09d").
-:return: the glyph to display, or an empty string for unknown codes."""
+	:param owm_code: OpenWeatherMap icon code (e.g. "09d").
+	:return: the glyph to display, or an empty string for unknown codes.
+	"""
 
 	return get_icon(OWM_ICON_NAMES.get(owm_code, ''))
