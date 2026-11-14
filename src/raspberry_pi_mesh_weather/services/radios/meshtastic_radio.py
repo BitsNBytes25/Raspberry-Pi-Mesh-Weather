@@ -262,6 +262,7 @@ class MeshtasticRadio(Service):
 	async def run(self):
 		# Timers in seconds
 		FLOOD_INTERVAL = 3600  # 1 hour
+		FORECAST_INTERVAL = 3600  # 1 hour
 		ALERT_INTERVAL = 1800  # 30 minutes
 
 		last_flood = 0
@@ -294,8 +295,8 @@ class MeshtasticRadio(Service):
 				last_flood = now
 
 			# --- Weather Check Logic ---
-			# Daily forecast check, runs between 6 and 7 in the morning
-			if 6 <= hour < 7 and now - last_daily > FLOOD_INTERVAL:
+			# Forecast check, runs every hour between 5-9 AM and 4-6 PM
+			if (5 <= hour <= 9 or 16 <= hour <= 18) and now - last_daily > FORECAST_INTERVAL:
 				successful = await self.run_daily_forecast()
 				if successful:
 					# Allow this to run multiple times if the first attempt failed.

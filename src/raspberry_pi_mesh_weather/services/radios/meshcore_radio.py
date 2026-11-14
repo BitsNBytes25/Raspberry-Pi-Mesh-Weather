@@ -238,6 +238,7 @@ class MeshcoreRadio(Service):
 		# Timers in seconds
 		LOCAL_INTERVAL = 900  # 15 minutes
 		FLOOD_INTERVAL = 10800  # 3 hours
+		FORECAST_INTERVAL = 3600  # 1 hour
 		ALERT_INTERVAL = 1800  # 30 minutes
 
 		last_local = 0
@@ -295,8 +296,8 @@ class MeshcoreRadio(Service):
 				last_local = now
 
 			# --- Weather Check Logic ---
-			# Daily forecast check, runs between 6 and 7 in the morning
-			if 6 <= hour < 7 and now - last_daily > FLOOD_INTERVAL:
+			# Forecast check, runs every hour between 5-9 AM and 4-6 PM
+			if (5 <= hour <= 9 or 16 <= hour <= 18) and now - last_daily > FORECAST_INTERVAL:
 				successful = await self.run_daily_forecast()
 				if successful:
 					# Allow this to run multiple times if the first attempt failed.
