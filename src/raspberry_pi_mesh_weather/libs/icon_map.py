@@ -82,14 +82,14 @@ WEATHER_ICONS_MODERN = {
 
 WEATHER_ICONS_COMPATIBLE = {
 	'sun': '☀',          # U+2600 (Black Sun with Rays - worked in your compatible set)
-	'moon': 'O',          # Simple text character (replaces failing crescent ☾)
-	'sun_clouds': '☼☁',   # Combined text/symbol representation
+	'moon': '🌙️',          # Simple text character (replaces failing crescent ☾)
+	'sun_clouds': '☀',   # Combined text/symbol representation
 	'cloud': '☁',         # U+2601 (Cloud - worked)
 	'rain': '☔',         # U+2614 (Umbrella with Rain Drops - worked in compatible)
-	'drizzle': '☂',       # U+2602 (Umbrella - let's verify or use drop symbol below)
+	'drizzle': '☔',       # U+2602 (Umbrella - let's verify or use drop symbol below)
 	'thunderstorm': '⚡', # U+26A1 (High-voltage sign / Lightning bolt - usually well supported)
 	'snow': '❄',         # U+2744 (Snowflake - worked)
-	'fog': '≡'            # Horizontal lines symbol (often used for fog/mist in terminals)
+	'fog': '☁'            # Horizontal lines symbol (often used for fog/mist in terminals)
 }
 
 def _icon_maps():
