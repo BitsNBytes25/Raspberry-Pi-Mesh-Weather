@@ -1,5 +1,4 @@
 import asyncio
-from datetime import datetime
 import logging
 import time
 
@@ -27,21 +26,16 @@ class MeshcoreRadio(Service):
 		self.weather_channel = 1
 		self.mqtt_connections = None
 
-		# --- Daily Forecast Integration ---
-	async def run_daily_forecast(self) -> bool:
-		"""Runs the forecast fetch and broadcasts it."""
+	async def broadcast(self, text: str):
+		"""
+		Broadcast `text` to the weather channel (all nodes).
 
-		cmd = get_command('!forecast')
-		if cmd is None:
-			return False
+		Shared transmit interface used by the scheduled tasks service,
+		so that job logic can live in one place for both radios.
 
-		result = cmd(None)
-		if result.success and result.has_data:
-			# Broadcast to all nodes (or a specific group if MESH_PORT is set)
-			await self.radio.commands.send_chan_msg(self.weather_channel, result.message)
-			return True
-		else:
-			return result.success
+		:param text: The message to send.
+		"""
+		await self.radio.commands.send_chan_msg(self.weather_channel, text)
 
 	async def run_alerts(self) -> bool:
 		cmd = get_command('!alerts')
@@ -238,12 +232,10 @@ class MeshcoreRadio(Service):
 		# Timers in seconds
 		LOCAL_INTERVAL = 900  # 15 minutes
 		FLOOD_INTERVAL = 10800  # 3 hours
-		FORECAST_INTERVAL = 3600  # 1 hour
 		ALERT_INTERVAL = 1800  # 30 minutes
 
 		last_local = 0
 		last_flood = 0
-		last_daily = 0
 		last_alerts = 0
 
 		# Subscribe to the "#weather" channel
@@ -271,7 +263,6 @@ class MeshcoreRadio(Service):
 
 		while self.running:
 			now = time.time()
-			hour = datetime.now().hour
 
 			# Update Peer/Repeater list
 			contacts = await self.radio.commands.get_contacts()
@@ -294,14 +285,6 @@ class MeshcoreRadio(Service):
 				logging.debug('Sending local advert...')
 				await self.radio.commands.send_advert(False)
 				last_local = now
-
-			# --- Weather Check Logic ---
-			# Forecast check, runs every hour between 5-9 AM and 4-6 PM
-			if (5 <= hour <= 9 or 16 <= hour <= 18) and now - last_daily > FORECAST_INTERVAL:
-				successful = await self.run_daily_forecast()
-				if successful:
-					# Allow this to run multiple times if the first attempt failed.
-					last_daily = now
 
 			if now - last_alerts > ALERT_INTERVAL:
 				successful = await self.run_alerts()

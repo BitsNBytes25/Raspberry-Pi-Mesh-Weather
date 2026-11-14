@@ -55,12 +55,15 @@ async def daemon_main(test: bool = False):
 			logging.error('Unsupported sensor type requested')
 
 	# Load the appropriate radio
+	radio = None
+	radio_loaded = False
 	if config.radio.type == 'meshcore':
 		from raspberry_pi_mesh_weather.services.radios.meshcore_radio import MeshcoreRadio
 		radio = MeshcoreRadio()
 		logging.debug('Loading %s', radio.get_name())
 		loadable = await radio.load()
 		if loadable:
+			radio_loaded = True
 			if test:
 				await radio.test()
 			else:
@@ -68,12 +71,14 @@ async def daemon_main(test: bool = False):
 				tasks.append(radio.start())
 		else:
 			logging.error('%s could not be loaded!', radio.get_name())
+			radio = None
 	elif config.radio.type == 'meshtastic':
 		from raspberry_pi_mesh_weather.services.radios.meshtastic_radio import MeshtasticRadio
 		radio = MeshtasticRadio()
 		logging.debug('Loading %s', radio.get_name())
 		loadable = await radio.load()
 		if loadable:
+			radio_loaded = True
 			if test:
 				await radio.test()
 			else:
@@ -81,8 +86,26 @@ async def daemon_main(test: bool = False):
 				tasks.append(radio.start())
 		else:
 			logging.error('%s could not be loaded!', radio.get_name())
+			radio = None
 	else:
 		logging.error('Unsupported radio type requested')
+
+	# Load the shared scheduled tasks service (currently runs the morning and
+	# evening forecast broadcast, which is radio-independent once the radio
+	# implements `broadcast`)
+	if radio_loaded:
+		from raspberry_pi_mesh_weather.services.scheduled_tasks import ScheduledTasks
+		scheduled = ScheduledTasks(radio)
+		logging.debug('Loading %s', scheduled.get_name())
+		loadable = await scheduled.load()
+		if loadable:
+			if test:
+				await scheduled.test()
+			else:
+				services.append(scheduled)
+				tasks.append(scheduled.start())
+		else:
+			logging.error('%s could not be loaded!', scheduled.get_name())
 
 	# Load Home Assistant integration if requested
 	if config.home_assistant.url:

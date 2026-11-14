@@ -1,5 +1,4 @@
 import asyncio
-from datetime import datetime
 import logging
 import time
 
@@ -25,21 +24,16 @@ class MeshtasticRadio(Service):
 		self.mqtt_connections = None
 
 
-	# --- Daily Forecast Integration ---
-	async def run_daily_forecast(self) -> bool:
-		"""Runs the forecast fetch and broadcasts it."""
+	async def broadcast(self, text: str):
+		"""
+		Broadcast `text` to all nodes (weather channel).
 
-		cmd = get_command('!forecast')
-		if cmd is None:
-			return False
+		Shared transmit interface used by the scheduled tasks service,
+		so that job logic can live in one place for both radios.
 
-		result = cmd(None)
-		if result.success and result.has_data:
-			# Broadcast to all nodes (or a specific group if MESH_PORT is set)
-			self.radio.sendText(text=result.message)
-			return True
-		else:
-			return result.success
+		:param text: The message to send.
+		"""
+		self.radio.sendText(text=text)
 
 	async def run_alerts(self) -> bool:
 		cmd = get_command('!alerts')
@@ -262,11 +256,9 @@ class MeshtasticRadio(Service):
 	async def run(self):
 		# Timers in seconds
 		FLOOD_INTERVAL = 3600  # 1 hour
-		FORECAST_INTERVAL = 3600  # 1 hour
 		ALERT_INTERVAL = 1800  # 30 minutes
 
 		last_flood = 0
-		last_daily = 0
 		last_alerts = 0
 
 		logging.debug('Subscribing to channel messages...')
@@ -277,7 +269,6 @@ class MeshtasticRadio(Service):
 
 		while self.running:
 			now = time.time()
-			hour = datetime.now().hour
 
 			# Update Peer/Repeater list
 			contacts = self.radio.nodes
@@ -293,14 +284,6 @@ class MeshtasticRadio(Service):
 				logging.debug('Sending flood advert...')
 				self.radio.sendTelemetry()
 				last_flood = now
-
-			# --- Weather Check Logic ---
-			# Forecast check, runs every hour between 5-9 AM and 4-6 PM
-			if (5 <= hour <= 9 or 16 <= hour <= 18) and now - last_daily > FORECAST_INTERVAL:
-				successful = await self.run_daily_forecast()
-				if successful:
-					# Allow this to run multiple times if the first attempt failed.
-					last_daily = now
 
 			if now - last_alerts > ALERT_INTERVAL:
 				successful = await self.run_alerts()
