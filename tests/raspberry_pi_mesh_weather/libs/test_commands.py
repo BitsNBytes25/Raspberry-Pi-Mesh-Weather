@@ -26,7 +26,7 @@ def test_all_sensors_all_readings_stable(mocker):
 	assert result.success is True
 	assert result.has_data is True
 	assert result.message == (
-		'☀️ Weather in cbus:\n'
+		'☀ Weather in cbus:\n'
 		'22.1°C (72°F) | 45.3% humidity | 1012.3 hPa (stable)'
 	)
 
@@ -36,7 +36,7 @@ def test_all_sensors_pressure_rising(mocker):
 
 	assert result.success is True
 	assert result.message == (
-		'☀️ Weather in cbus:\n'
+		'☀ Weather in cbus:\n'
 		'23.5°C (74°F) | 40.0% humidity | 1012.7 hPa (rising)'
 	)
 
@@ -46,7 +46,7 @@ def test_all_sensors_pressure_falling(mocker):
 
 	assert result.success is True
 	assert result.message == (
-		'🌧️ Weather in cbus:\n'
+		'☔ Weather in cbus:\n'
 		'21.0°C (70°F) | 55.0% humidity | 1009.8 hPa (falling)'
 	)
 
@@ -56,7 +56,7 @@ def test_all_sensors_high_humidity_cloudy(mocker):
 
 	assert result.success is True
 	assert result.message == (
-		'⛅ Weather in cbus:\n'
+		'☀ Weather in cbus:\n'
 		'29.5°C (85°F) | 75.0% humidity | 1011.0 hPa (stable)'
 	)
 
@@ -66,7 +66,7 @@ def test_all_sensors_freezing_takes_precedence(mocker):
 
 	assert result.success is True
 	assert result.message == (
-		'🥶 Weather in cbus:\n'
+		'❄❄ Weather in cbus:\n'
 		'-2.5°C (28°F) | 30.0% humidity | 1012.0 hPa (rising)'
 	)
 
@@ -76,7 +76,7 @@ def test_all_sensors_missing_humidity(mocker):
 
 	assert result.success is True
 	assert result.message == (
-		'☀️ Weather in cbus:\n'
+		'☀ Weather in cbus:\n'
 		'21.0°C (70°F) | 1012.3 hPa (stable)'
 	)
 
@@ -86,7 +86,7 @@ def test_all_sensors_missing_location_label(mocker):
 
 	assert result.success is True
 	assert result.message == (
-		'☀️ Current weather here:\n'
+		'☀ Current weather here:\n'
 		'20.0°C (68°F) | 50.0% humidity | 1013.0 hPa (stable)'
 	)
 
@@ -96,7 +96,7 @@ def test_all_sensors_missing_temperature(mocker):
 
 	assert result.success is True
 	assert result.message == (
-		'🌧️ Weather in cbus:\n'
+		'☔ Weather in cbus:\n'
 		'78.0% humidity | 1010.5 hPa (falling)'
 	)
 
@@ -115,7 +115,7 @@ def test_all_sensors_no_pressure_change(mocker):
 	assert result.success is True
 	assert result.has_data is True
 	assert result.message == (
-		'☀️ Weather in cbus:\n'
+		'☀ Weather in cbus:\n'
 		'22.1°C (72°F) | 45.3% humidity | 1012.3 hPa'
 	)
 
@@ -516,13 +516,13 @@ def test_forecast_command_empty_entries(mocker):
 
 
 def test_icons_default_compatible_style():
-	# No patching: honours the shipped default ('compatible', no variation
-	# selectors) from the dataclass / config.yaml.
+	# No patching: honours the shipped default ('compatible') from the
+	# dataclass / config.yaml.
 	result = commands.cmd_icons(None)
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == '☁ ☂ ☁ ☾ ☔ ❄ ☀ ⛅ ⛈'
+	assert result.message == '☁ ☔ ☁ ❄❄ 🌙️ ☔ ❄ ☀ ☀ ⚡'
 
 
 def test_icons_compatible_style(mocker):
@@ -531,7 +531,7 @@ def test_icons_compatible_style(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == '☁ ☂ ☁ ☾ ☔ ❄ ☀ ⛅ ⛈'
+	assert result.message == '☁ ☔ ☁ ❄❄ 🌙️ ☔ ❄ ☀ ☀ ⚡'
 
 
 def test_icons_modern_style(mocker):
@@ -540,7 +540,7 @@ def test_icons_modern_style(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == '☁️ 🌦️ 🌫️ 🌙️ 🌧️ ❄️ ☀️ ⛅️ ⛈️'
+	assert result.message == '☁️ 🌦️ 🌫️ 🥶️ 🌙️ 🌧️ ❄️ ☀️ ⛅️ ⛈️'
 
 
 # --- current-conditions fallback -------------------------------------------
@@ -627,7 +627,7 @@ def test_all_uses_owm_when_sensors_down(mocker):
 	assert result.success is True
 	assert result.has_data is True
 	assert result.message == (
-		'⛅ Weather in cbus:\n'
+		'☀ Weather in cbus:\n'
 		'12.0°C (54°F) | 81.0% humidity | 1005.4 hPa'
 	)
 

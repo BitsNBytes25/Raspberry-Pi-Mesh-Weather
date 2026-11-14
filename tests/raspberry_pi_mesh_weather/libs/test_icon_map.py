@@ -21,6 +21,7 @@ from raspberry_pi_mesh_weather.libs.icon_map import (
 _STANDARD_NAMES = {
 	'sun', 'moon', 'sun_clouds', 'cloud',
 	'rain', 'drizzle', 'thunderstorm', 'snow', 'fog',
+	'freezing',
 }
 
 # Every OpenWeatherMap icon code this project is expected to render.
@@ -72,12 +73,18 @@ translation can never leak a feed-specific code into the glyph sets.
 
 def test_compatible_glyphs_are_widely_supported():
 	"""
-The compatible set must only use glyphs from the U+2600-U+27BF block (or
-plain ASCII), which is the most broadly supported range on mesh devices.
+	The compatible set must only use glyphs from well-supported ranges:
+	plain ASCII, the U+2600-U+27BF basic-symbols block (safest on mesh
+	devices), the U+1F300-U+1F3FF range (used for the moon glyph), and the
+	U+FE0F variation selector (appended to the moon emoji).
 	"""
 	for name, glyph in WEATHER_ICONS_COMPATIBLE.items():
 		for ch in glyph:
-			ok = ord(ch) < 0x80 or (0x2600 <= ord(ch) <= 0x27BF)
+			cp = ord(ch)
+			ok = (cp < 0x80 or
+				  0x2600 <= cp <= 0x27BF or
+				  0x1F300 <= cp <= 0x1F3FF or
+				  cp == 0xFE0F)
 			assert ok, 'name ' + repr(name) + ' uses unsupported glyph ' + repr(ch)
 
 
@@ -97,6 +104,7 @@ def test_get_icon_modern_glyphs(mocker):
 	assert get_icon('rain') == chr(0x1F327) + VS
 	assert get_icon('drizzle') == chr(0x1F326) + VS
 	assert get_icon('snow') == chr(0x2744) + VS
+	assert get_icon('freezing') == chr(0x1F976) + VS
 	assert get_icon('thunderstorm') == chr(0x26C8) + VS
 	assert get_icon('fog') == chr(0x1F32B) + VS
 
@@ -104,14 +112,15 @@ def test_get_icon_modern_glyphs(mocker):
 def test_get_icon_compatible_glyphs(mocker):
 	mocker.patch.object(icon_map.config.general, 'icon_style', 'compatible')
 	assert get_icon('sun') == chr(0x2600)
-	assert get_icon('moon') == chr(0x263E)
-	assert get_icon('sun_clouds') == chr(0x26C5)
+	assert get_icon('moon') == chr(0x1F319) + VS
+	assert get_icon('sun_clouds') == chr(0x2600)
 	assert get_icon('cloud') == chr(0x2601)
 	assert get_icon('rain') == chr(0x2614)
-	assert get_icon('drizzle') == chr(0x2602)
-	assert get_icon('thunderstorm') == chr(0x26C8)
+	assert get_icon('drizzle') == chr(0x2614)
+	assert get_icon('thunderstorm') == chr(0x26A1)
 	assert get_icon('snow') == chr(0x2744)
 	assert get_icon('fog') == chr(0x2601)
+	assert get_icon('freezing') == chr(0x2744) + chr(0x2744)
 
 
 def test_get_icon_unknown_name_returns_empty(mocker):
@@ -132,10 +141,10 @@ def test_get_weather_icon_translates_owm_codes_modern(mocker):
 def test_get_weather_icon_translates_owm_codes_compatible(mocker):
 	mocker.patch.object(icon_map.config.general, 'icon_style', 'compatible')
 	assert get_weather_icon('09d') == chr(0x2614)   # rain -> umbrella w/ drops
-	assert get_weather_icon('10d') == chr(0x2602)   # drizzle -> umbrella
+	assert get_weather_icon('10d') == chr(0x2614)   # drizzle -> umbrella
 	assert get_weather_icon('50d') == chr(0x2601)   # fog -> cloud
 	assert get_weather_icon('01d') == chr(0x2600)
-	assert get_weather_icon('11d') == chr(0x26C8)
+	assert get_weather_icon('11d') == chr(0x26A1)
 	assert get_weather_icon('80d') == chr(0x2744)   # snow shower -> snowflake
 
 
@@ -148,5 +157,5 @@ def test_get_weather_icon_unknown_code_returns_empty(mocker):
 def test_get_weather_icon_honours_shipped_default_style():
 	# No patching: exercises the real default ('compatible') from the
 	# dataclass / config.yaml.
-	assert get_weather_icon('10d') == chr(0x2602)
+	assert get_weather_icon('10d') == chr(0x2614)
 	assert get_weather_icon('09d') == chr(0x2614)

@@ -25,6 +25,7 @@ STANDARD_ICON_NAMES = [
 	'cloud',
 	'drizzle',
 	'fog',
+	'freezing',
 	'moon',
 	'rain',
 	'snow',
@@ -77,6 +78,7 @@ WEATHER_ICONS_MODERN = {
 	'drizzle': '🌦️',
 	'thunderstorm': '⛈️',
 	'snow': '❄️',
+	'freezing': '🥶️',
 	'fog': '🌫️'
 }
 
@@ -91,6 +93,7 @@ WEATHER_ICONS_COMPATIBLE = {
 	'drizzle': '☔',       # U+2602 (Umbrella - let's verify or use drop symbol below)
 	'thunderstorm': '⚡', # U+26A1 (High-voltage sign / Lightning bolt - usually well supported)
 	'snow': '❄',         # U+2744 (Snowflake - worked)
+	'freezing': '❄❄',     # U+2744 × 2 (double snowflake for extreme cold)
 	'fog': '☁'            # Horizontal lines symbol (often used for fog/mist in terminals)
 }
 

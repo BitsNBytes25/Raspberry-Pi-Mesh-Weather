@@ -20,32 +20,34 @@
 from .handler import command, CommandResponse, CommandResponseNoData, CommandResponseSuccess
 from raspberry_pi_mesh_weather.libs.config import config
 from raspberry_pi_mesh_weather.libs.humidity import get_humidity
+from raspberry_pi_mesh_weather.libs.icon_map import get_icon
 from raspberry_pi_mesh_weather.libs.pressure import get_pressure, get_pressure_change
 from raspberry_pi_mesh_weather.libs.temperature import get_temperature
 
 
 def _weather_icon(temp: float | None, humidity: float | None, pressure_change: float | None) -> str:
 	"""
-	Pick a friendly emoji to represent the current local conditions.
+	Pick a weather icon to represent the current local conditions.
 
 	:param temp: Current temperature in °C (or None if unavailable)
 	:param humidity: Current relative humidity in % (or None if unavailable)
 	:param pressure_change: 1 if pressure is rising, -1 if falling, 0 if stable.
-	:return: Emoji representing the current conditions.
+	:return: Icon glyph for the current conditions, resolved via the active
+	         icon style (see libs/icon_map.py).
 	"""
 	if temp is not None and temp < 1:
 		# Freezing - takes precedence over everything else.
-		return '🥶'
+		return get_icon('freezing')
 	if pressure_change == -1:
 		# Pressure falling - rain is likely.
-		return '🌧️'
+		return get_icon('rain')
 	if pressure_change == 1:
 		# Pressure rising - expect sunshine.
-		return '☀️'
+		return get_icon('sun')
 	if humidity is not None and humidity > 70:
 		# Muggy and damp - expect overcast.
-		return '⛅'
-	return '☀️'
+		return get_icon('sun_clouds')
+	return get_icon('sun')
 
 
 @command('all', group=True, direct=True)

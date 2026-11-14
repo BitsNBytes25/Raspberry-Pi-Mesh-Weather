@@ -173,9 +173,9 @@ def test_get_daily_forecast_respects_compatible_icon_style(columbus_afternoon, m
 	_patch_request(mocker, columbus_afternoon)
 	client = _build_forecast(mocker, icon_style='compatible')
 	result = client.get_daily_forecast()
-	# 10d (light rain) maps to the umbrella-with-droplets glyph in the
+	# 10d (light rain) maps to the umbrella-with-rain-drops glyph in the
 	# widely-supported set instead of the colour emoji.
-	assert result[0]['icon'] == '\u2602'
+	assert result[0]['icon'] == '\u2614'
 
 
 # --- get_current_conditions ---------------------------------------------------
