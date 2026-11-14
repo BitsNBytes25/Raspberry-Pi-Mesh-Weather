@@ -3,8 +3,8 @@ import requests
 
 from datetime import datetime, timezone
 
-from raspberry_pi_mesh_weather.libs import icon_map, weather_forecast
-from raspberry_pi_mesh_weather.libs.weather_forecast import WeatherForecast
+from raspberry_pi_mesh_weather.libs import icon_map, open_weather_map
+from raspberry_pi_mesh_weather.libs.open_weather_map import OpenWeatherMap
 
 
 # The code computes hour/date from datetime.fromtimestamp; pin it to UTC so the
@@ -15,7 +15,7 @@ _UTC = timezone.utc
 
 def _patch_time(mocker):
 	"""
-	Pin the datetime class used by the weather_forecast module to UTC.
+	Pin the datetime class used by the open_weather_map module to UTC.
 	"""
 
 	class _FakeDatetime(datetime):
@@ -24,7 +24,7 @@ def _patch_time(mocker):
 		def fromtimestamp(cls, ts, *args, **kwargs):
 			return datetime.fromtimestamp(ts, tz=_UTC)
 
-	mocker.patch.object(weather_forecast, 'datetime', _FakeDatetime)
+	mocker.patch.object(open_weather_map, 'datetime', _FakeDatetime)
 
 
 def _patch_request(mocker, payload, status_code=200):
@@ -34,24 +34,24 @@ def _patch_request(mocker, payload, status_code=200):
 	response = requests.Response()
 	response.status_code = status_code
 	response.json = lambda: payload
-	return mocker.patch.object(weather_forecast.requests, 'get', return_value=response)
+	return mocker.patch.object(open_weather_map.requests, 'get', return_value=response)
 
 
 def _patch_request_failure(mocker):
-	return mocker.patch.object(weather_forecast.requests, 'get',
+	return mocker.patch.object(open_weather_map.requests, 'get',
 								side_effect=requests.exceptions.ConnectionError('no connectivity'))
 
 
 def _build_forecast(mocker, api_key='test-api-key', lat=39.96, lon=-83.0,
 					icon_style='modern'):
-	patched_config = mocker.patch.object(weather_forecast, 'config')
+	patched_config = mocker.patch.object(open_weather_map, 'config')
 	patched_config.weather.openweather_api_key = api_key
 	patched_config.location.lat = lat
 	patched_config.location.lon = lon
 	# Icon resolution reads the global config singleton (used by icon_map),
 	# which is a different object from the module-local mock above.
 	mocker.patch.object(icon_map.config.general, 'icon_style', icon_style)
-	return WeatherForecast()
+	return OpenWeatherMap()
 
 
 @pytest.fixture

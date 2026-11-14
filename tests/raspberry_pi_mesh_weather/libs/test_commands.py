@@ -305,14 +305,14 @@ def test_heat_index_35c_75rh():
 
 def _patch_forecast_cmd(mocker, entries, label='cbus', api='test-api-key'):
 	"""
-	Invoke cmd_daily_forecast with a mocked WeatherForecast that returns `entries`.
+	Invoke cmd_daily_forecast with a mocked OpenWeatherMap that returns `entries`.
 	"""
 	config = mocker.patch.object(forecast, 'config')
 	config.weather.openweather_api_key = api
 	config.location.lat = 39.96
 	config.location.lon = -83.0
 	config.location.label = label
-	weather = mocker.patch.object(forecast, 'WeatherForecast')
+	weather = mocker.patch.object(forecast, 'OpenWeatherMap')
 	weather.return_value.get_daily_forecast.return_value = entries
 	return commands.cmd_daily_forecast(None)
 
@@ -476,7 +476,7 @@ def test_forecast_command_empty_entries(mocker):
 	config.location.lat = 39.96
 	config.location.lon = -83.0
 	config.location.label = 'cbus'
-	mocker.patch.object(forecast, 'WeatherForecast').return_value.get_daily_forecast.return_value = []
+	mocker.patch.object(forecast, 'OpenWeatherMap').return_value.get_daily_forecast.return_value = []
 	result = commands.cmd_daily_forecast(None)
 
 	assert result.success is False

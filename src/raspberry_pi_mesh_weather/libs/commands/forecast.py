@@ -21,7 +21,7 @@ import logging
 
 from .handler import command, CommandResponse, CommandResponseError, CommandResponseSuccess
 from raspberry_pi_mesh_weather.libs.config import config
-from raspberry_pi_mesh_weather.libs.weather_forecast import WeatherForecast
+from raspberry_pi_mesh_weather.libs.open_weather_map import OpenWeatherMap
 
 # Descriptions with no precipitation / disruptive weather.  Used to decide
 # when to lead with the incoming weather (the "around" phrasing) instead of
@@ -128,8 +128,8 @@ def cmd_daily_forecast(target: str | None = None) -> CommandResponse:
 
 	logging.debug('--- Running Daily Weather Forecast Fetch ---')
 	try:
-		# Initialize the weather client (it will read OPENWEATHERMAP_API_KEY)
-		weather_client = WeatherForecast()
+		# Initialize the OpenWeatherMap client (it will read OPENWEATHERMAP_API_KEY)
+		weather_client = OpenWeatherMap()
 		entries = weather_client.get_daily_forecast(4)
 
 		if not entries:

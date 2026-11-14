@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`ping` command** — No longer raises `TypeError` when invoked with no target (the channel/internal path calls commands with `None`); returns a bare `pong` instead of a crash.
 - **Weather icons** — Forecast icons are now resolved through `get_weather_icon()` from the new `general.icon_style` setting, defaulting to the `compatible` glyph set so icons render on mesh clients instead of showing as "*". Colour emoji are still available by setting `icon_style: "modern"`.
 - **`icon_map`** — `STANDARD_ICON_NAMES` is now an ordered list (authoritative, single source of truth) instead of an unordered set, giving consumers a stable, deterministic glyph sequence. The `icons` command reuses this list directly rather than declaring its own.
+- **`open_weather_map` module** — Renamed `weather_forecast` (`WeatherForecast`) to `open_weather_map` (`OpenWeatherMap`) so it is a dedicated OpenWeatherMap client ready for additional lookups (current weather, city lookup, etc.). `get_daily_forecast` behavior is unchanged.
 
 ## [1.0.0] - 2026-06-20
 

@@ -5,13 +5,13 @@ from .config import config
 from .icon_map import get_weather_icon
 
 
-class WeatherForecast:
+class OpenWeatherMap:
 	"""
-	Handles fetching daily weather forecast data from an external API.
+	Client for the OpenWeatherMap API, providing lookups for the configured location.
 	"""
 	def __init__(self):
 		"""
-		Initializes the WeatherForecast client.
+		Initializes the OpenWeatherMap client.
 		"""
 		self.api_key = config.weather.openweather_api_key
 		self.lat = config.location.lat
@@ -25,7 +25,7 @@ class WeatherForecast:
 
 	def _fetch_data(self, call: str, params: dict) -> dict:
 		"""
-		Fetches raw forecast data from OpenWeatherMap for a given city.
+		Fetches raw data from the OpenWeatherMap API for the given call.
 		"""
 
 		try:
