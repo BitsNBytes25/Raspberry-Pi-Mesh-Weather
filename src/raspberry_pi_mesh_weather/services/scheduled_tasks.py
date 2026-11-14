@@ -47,6 +47,7 @@ class ScheduledTasks(Service):
 
 		self._current_timestamp = self._clock().now().timestamp() # Kept up to date each tick
 		self._last_forecast = 0
+		self._last_current = 0
 
 	async def run_daily_forecast(self):
 		"""
@@ -68,6 +69,26 @@ class ScheduledTasks(Service):
 			await self.sender.broadcast(result.message)
 			self._last_forecast = self._current_timestamp
 
+	async def run_current_weather(self):
+		"""
+		Fetch current weather via the 'all' command
+
+		Limited to run only once per hour.
+		"""
+		if (self._current_timestamp - self._last_current) < self.HOURLY_INTERVAL:
+			# Last current was sent within 1 hour, do not spam the network
+			return
+
+		cmd = get_command('!all')
+		if cmd is None:
+			return
+
+		result = cmd(None)
+		if result.success and result.has_data:
+			# Command successfully completed, send the broadcast and make a log of when it was sent
+			await self.sender.broadcast(result.message)
+			self._last_current = self._current_timestamp
+
 	async def load(self) -> bool:
 		# The sender (radio) is already loaded by the caller; nothing else to init.
 		return True
@@ -82,8 +103,15 @@ class ScheduledTasks(Service):
 			hour = now.hour
 			self._current_timestamp = now.timestamp()
 
-			if 6 <= hour <= 9 or 16 <= hour <= 18:
-				# Run the forecast between hours of 6a-9a and 4p-6p
+			# Schedule for automated tasks
+			if 6 <= hour <= 9:
+				# Run the forecast between hours of 6a-9a
+				await self.run_daily_forecast()
+			elif 10 <= hour <= 15:
+				# Provide current weather during the day
+				await self.run_current_weather()
+			elif 16 <= hour <= 18:
+				# Run the forecast between hours of 4p-6p
 				await self.run_daily_forecast()
 
 			await asyncio.sleep(self.SLEEP_SECONDS)
