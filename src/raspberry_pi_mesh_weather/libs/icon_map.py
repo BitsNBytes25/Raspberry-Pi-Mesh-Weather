@@ -111,28 +111,28 @@ WEATHER_ICONS_MODERN = {
 # These icons are tested working on the T-Deck with Wadamesh
 # - https://github.com/ALLFATHER-BV/wadamesh
 WEATHER_ICONS_COMPATIBLE = {
-	'sun': '☀',          # U+2600 (Black Sun with Rays - worked in your compatible set)
-	'moon': '🌙️',          # Simple text character (replaces failing crescent ☾)
-	'sun_clouds': '☀',   # Combined text/symbol representation
+	'sun': '☀',           # U+2600 (Black Sun with Rays - worked in your compatible set)
+	'moon': '🌙️',         # Simple text character (replaces failing crescent ☾)
+	'sun_clouds': '☀',    # Combined text/symbol representation
 	'cloud': '☁',         # U+2601 (Cloud - worked)
-	'rain': '☔',         # U+2614 (Umbrella with Rain Drops - worked in compatible)
+	'rain': '☔',          # U+2614 (Umbrella with Rain Drops - worked in compatible)
 	'drizzle': '☔',       # U+2602 (Umbrella - let's verify or use drop symbol below)
-	'thunderstorm': '⚡', # U+26A1 (High-voltage sign / Lightning bolt - usually well supported)
-	'snow': '❄',         # U+2744 (Snowflake - worked)
+	'thunderstorm': '⚡',  # U+26A1 (High-voltage sign / Lightning bolt - usually well supported)
+	'snow': '❄',          # U+2744 (Snowflake - worked)
 	'freezing': '🥶',     # U+1F976 (extreme cold)
-	'fog': '☁',          # U+2601 (Cloud - worked)
-	'cyclone': '💨',  # U+1F4A8 Blowing air, (or passing gas...)
-	'flood': '🌊',    # U+1F30A Water wave (within the permitted U+1F300-U+1F3FF range)
-	'heat': '♨',            # U+2668 Hot Springs
-	'wind': '🌬',     # U+1F32C Wind blowing face (within the permitted U+1F300-U+1F3FF range)
-	'dust': '🏜',     # U+1F3DC Desert (within the permitted U+1F300-U+1F3FF range)
-	'mask': '⚠',             # U+26A0 Warning sign (no basic-symbol equivalent for air quality)
-	'fire': '🔥',             # U+1F525 Fire sign
-	'avalanche': '🏔',  # U+1F3D4 Snow-capped mountain (within the permitted U+1F300-U+1F3FF range)
-	'surf': '🌊',     # U+1F30A Water wave
-	'ship': '🌊',             # U+1F30A Water wave
-	'info': '⚠',             # U+26A0 Warning sign (no basic-symbol equivalent for info)
-	'warning': '❗',          # U+2757 Exclamation mark
+	'fog': '☁',           # U+2601 (Cloud - worked)
+	'cyclone': '💨',      # U+1F4A8 Blowing air, (or passing gas...)
+	'flood': '🌊',        # U+1F30A Water wave (within the permitted U+1F300-U+1F3FF range)
+	'heat': '🔥',          # U+1F525 Fire sign
+	'wind': '💨',         # U+1F4A8 Blowing air, (or passing gas...)
+	'dust': '💨',         # U+1F4A8 Blowing air, (or passing gas...)
+	'mask': '⚠',          # U+26A0 Warning sign (no basic-symbol equivalent for air quality)
+	'fire': '🔥',          # U+1F525 Fire sign
+	'avalanche': '❄',     # U+2744 (Snowflake - worked)
+	'surf': '🌊',         # U+1F30A Water wave
+	'ship': '🌊',         # U+1F30A Water wave
+	'info': '⚠',          # U+26A0 Warning sign (no basic-symbol equivalent for info)
+	'warning': '❗',       # U+2757 Exclamation mark
 }
 
 def _icon_maps():
