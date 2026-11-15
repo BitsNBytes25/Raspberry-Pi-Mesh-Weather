@@ -49,7 +49,7 @@ class ScheduledTasks(Service):
 		self._last_forecast = 0
 		self._last_current = 0
 
-	async def run_daily_forecast(self):
+	async def run_daily_forecast(self) -> bool:
 		"""
 		Fetch the next forecast entries and broadcast them over the mesh.
 
@@ -57,19 +57,21 @@ class ScheduledTasks(Service):
 		"""
 		if (self._current_timestamp - self._last_forecast) < self.HOURLY_INTERVAL:
 			# Last forecast was sent within 1 hour, do not spam the network
-			return
+			return False
 
 		cmd = get_command('!forecast')
 		if cmd is None:
-			return
+			return False
 
 		result = cmd(None)
 		if result.success and result.has_data:
 			# Command successfully completed, send the broadcast and make a log of when it was sent
 			await self.sender.broadcast(result.message)
 			self._last_forecast = self._current_timestamp
+			return True
+		return False
 
-	async def run_current_weather(self):
+	async def run_current_weather(self) -> bool:
 		"""
 		Fetch current weather via the 'all' command
 
@@ -77,17 +79,19 @@ class ScheduledTasks(Service):
 		"""
 		if (self._current_timestamp - self._last_current) < self.HOURLY_INTERVAL:
 			# Last current was sent within 1 hour, do not spam the network
-			return
+			return False
 
 		cmd = get_command('!all')
 		if cmd is None:
-			return
+			return False
 
 		result = cmd(None)
 		if result.success and result.has_data:
 			# Command successfully completed, send the broadcast and make a log of when it was sent
 			await self.sender.broadcast(result.message)
 			self._last_current = self._current_timestamp
+			return True
+		return False
 
 	async def load(self) -> bool:
 		# The sender (radio) is already loaded by the caller; nothing else to init.
@@ -102,16 +106,23 @@ class ScheduledTasks(Service):
 			now = self._clock()
 			hour = now.hour
 			self._current_timestamp = now.timestamp()
+			sent = False # Only send one broadcast per tick
 
 			# Schedule for automated tasks
 			if 6 <= hour <= 9:
 				# Run the forecast between hours of 6a-9a
-				await self.run_daily_forecast()
+				if await self.run_daily_forecast():
+					sent = True
 			elif 10 <= hour <= 15:
 				# Provide current weather during the day
-				await self.run_current_weather()
+				if await self.run_current_weather():
+					sent = True
 			elif 16 <= hour <= 18:
 				# Run the forecast between hours of 4p-6p
-				await self.run_daily_forecast()
+				if await self.run_daily_forecast():
+					sent = True
+
+			# @todo sent will be used for additional checks
+			# to prevent multiple messages from being sent within one minute.
 
 			await asyncio.sleep(self.SLEEP_SECONDS)
