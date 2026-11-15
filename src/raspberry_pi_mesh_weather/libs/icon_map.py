@@ -119,20 +119,20 @@ WEATHER_ICONS_COMPATIBLE = {
 	'drizzle': '☔',       # U+2602 (Umbrella - let's verify or use drop symbol below)
 	'thunderstorm': '⚡', # U+26A1 (High-voltage sign / Lightning bolt - usually well supported)
 	'snow': '❄',         # U+2744 (Snowflake - worked)
-	'freezing': '❄❄',     # U+2744 × 2 (double snowflake for extreme cold)
-	'fog': '☁',          # Horizontal lines symbol (often used for fog/mist in terminals)
-	'cyclone': '🌀',  # U+1F300 Cyclone (within the permitted U+1F300-U+1F3FF range)
+	'freezing': '🥶',     # U+1F976 (extreme cold)
+	'fog': '☁',          # U+2601 (Cloud - worked)
+	'cyclone': '💨',  # U+1F4A8 Blowing air, (or passing gas...)
 	'flood': '🌊',    # U+1F30A Water wave (within the permitted U+1F300-U+1F3FF range)
 	'heat': '♨',            # U+2668 Hot Springs
 	'wind': '🌬',     # U+1F32C Wind blowing face (within the permitted U+1F300-U+1F3FF range)
 	'dust': '🏜',     # U+1F3DC Desert (within the permitted U+1F300-U+1F3FF range)
 	'mask': '⚠',             # U+26A0 Warning sign (no basic-symbol equivalent for air quality)
-	'fire': '⚠',             # U+26A0 Warning sign (no basic-symbol equivalent for fire)
+	'fire': '🔥',             # U+1F525 Fire sign
 	'avalanche': '🏔',  # U+1F3D4 Snow-capped mountain (within the permitted U+1F300-U+1F3FF range)
-	'surf': '🏖',     # U+1F3D6 Beach with umbrella (within the permitted U+1F300-U+1F3FF range)
-	'ship': '⚠',             # U+26A0 Warning sign (no basic-symbol equivalent for vessels)
+	'surf': '🌊',     # U+1F30A Water wave
+	'ship': '🌊',             # U+1F30A Water wave
 	'info': '⚠',             # U+26A0 Warning sign (no basic-symbol equivalent for info)
-	'warning': '⚠',          # U+26A0 Warning sign (default glyph for unmatched events)
+	'warning': '❗',          # U+2757 Exclamation mark
 }
 
 def _icon_maps():
