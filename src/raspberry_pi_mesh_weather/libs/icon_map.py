@@ -18,6 +18,8 @@ OpenWeatherMap-specific convenience bridge used by the forecast client."""
 
 from .config import config
 
+VS = '\uFE0F'  # Variation selector, forces colour emoji presentation in the modern set
+
 # Authoritative, ordered list of standard icon names.  Order is meaningful
 # and reused directly by consumers (e.g. the `icons` diagnostic command) so the
 # glyph set and its display sequence live in one place.
@@ -32,6 +34,18 @@ STANDARD_ICON_NAMES = [
 	'sun',
 	'sun_clouds',
 	'thunderstorm',
+	'cyclone',
+	'flood',
+	'heat',
+	'wind',
+	'dust',
+	'mask',
+	'fire',
+	'avalanche',
+	'surf',
+	'ship',
+	'info',
+	'warning',
 ]
 
 OWM_ICON_NAMES = {
@@ -79,7 +93,19 @@ WEATHER_ICONS_MODERN = {
 	'thunderstorm': '⛈️',
 	'snow': '❄️',
 	'freezing': '🥶️',
-	'fog': '🌫️'
+	'fog': '🌫️',
+	'cyclone': chr(0x1F300) + VS,
+	'flood': chr(0x1F30A) + VS,
+	'heat': chr(0x1F975) + VS,
+	'wind': chr(0x1F32C) + VS,
+	'dust': chr(0x1F3DC) + VS,
+	'mask': chr(0x1F637) + VS,
+	'fire': chr(0x1F525) + VS,
+	'avalanche': chr(0x1F3D4) + VS,
+	'surf': chr(0x1F3D6) + VS,
+	'ship': chr(0x1F6A2) + VS,
+	'info': chr(0x2139) + VS,
+	'warning': chr(0x26A0) + VS,
 }
 
 # These icons are tested working on the T-Deck with Wadamesh
@@ -94,7 +120,19 @@ WEATHER_ICONS_COMPATIBLE = {
 	'thunderstorm': '⚡', # U+26A1 (High-voltage sign / Lightning bolt - usually well supported)
 	'snow': '❄',         # U+2744 (Snowflake - worked)
 	'freezing': '❄❄',     # U+2744 × 2 (double snowflake for extreme cold)
-	'fog': '☁'            # Horizontal lines symbol (often used for fog/mist in terminals)
+	'fog': '☁',          # Horizontal lines symbol (often used for fog/mist in terminals)
+	'cyclone': '🌀',  # U+1F300 Cyclone (within the permitted U+1F300-U+1F3FF range)
+	'flood': '🌊',    # U+1F30A Water wave (within the permitted U+1F300-U+1F3FF range)
+	'heat': '♨',            # U+2668 Hot Springs
+	'wind': '🌬',     # U+1F32C Wind blowing face (within the permitted U+1F300-U+1F3FF range)
+	'dust': '🏜',     # U+1F3DC Desert (within the permitted U+1F300-U+1F3FF range)
+	'mask': '⚠',             # U+26A0 Warning sign (no basic-symbol equivalent for air quality)
+	'fire': '⚠',             # U+26A0 Warning sign (no basic-symbol equivalent for fire)
+	'avalanche': '🏔',  # U+1F3D4 Snow-capped mountain (within the permitted U+1F300-U+1F3FF range)
+	'surf': '🏖',     # U+1F3D6 Beach with umbrella (within the permitted U+1F300-U+1F3FF range)
+	'ship': '⚠',             # U+26A0 Warning sign (no basic-symbol equivalent for vessels)
+	'info': '⚠',             # U+26A0 Warning sign (no basic-symbol equivalent for info)
+	'warning': '⚠',          # U+26A0 Warning sign (default glyph for unmatched events)
 }
 
 def _icon_maps():

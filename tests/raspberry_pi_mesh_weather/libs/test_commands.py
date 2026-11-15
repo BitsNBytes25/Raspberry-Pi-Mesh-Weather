@@ -550,7 +550,16 @@ def test_icons_default_compatible_style():
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == '☁ ☔ ☁ ❄❄ 🌙️ ☔ ❄ ☀ ☀ ⚡'
+	assert result.message == ' '.join(
+		icon_map.get_icon(name) for name in icon_map.STANDARD_ICON_NAMES
+	)
+	# Glyphs stay within the widely-supported ranges: the warning sign
+	# (U+26A0) is the fallback for alert names with no basic-symbol
+	# equivalent, and the snowflake (U+2744) appears once for snow and
+	# twice for freezing.
+	assert len(result.message) <= 130
+	assert result.message.count(chr(0x26A0)) == 5
+	assert result.message.count(chr(0x2744)) == 3
 
 
 def test_icons_compatible_style(mocker):
@@ -559,7 +568,11 @@ def test_icons_compatible_style(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == '☁ ☔ ☁ ❄❄ 🌙️ ☔ ❄ ☀ ☀ ⚡'
+	assert result.message == ' '.join(
+		icon_map.get_icon(name) for name in icon_map.STANDARD_ICON_NAMES
+	)
+	assert result.message.count(chr(0x26A0)) == 5
+	assert result.message.count(chr(0x2744)) == 3
 
 
 def test_icons_modern_style(mocker):
@@ -568,7 +581,12 @@ def test_icons_modern_style(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == '☁️ 🌦️ 🌫️ 🥶️ 🌙️ 🌧️ ❄️ ☀️ ⛅️ ⛈️'
+	assert result.message == ' '.join(
+		icon_map.get_icon(name) for name in icon_map.STANDARD_ICON_NAMES
+	)
+	# Colour emoji in the modern set, VS included.
+	assert (chr(0x1F300) + chr(0xFE0F)) in result.message  # cyclone
+	assert len(result.message) <= 130
 
 
 # --- current-conditions fallback -------------------------------------------

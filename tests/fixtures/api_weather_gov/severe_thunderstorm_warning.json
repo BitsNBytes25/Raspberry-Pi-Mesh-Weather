@@ -1,0 +1,28 @@
+{
+  "@context": [],
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "urn:oid:2.49.0.1.840.0.b2c3d4e5f6a718293a4b5c6d7e8f90a1b2c3d4.001.1",
+        "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.b2c3d4e5f6a718293a4b5c6d7e8f90a1b2c3d4.001.1",
+        "@type": "wx:Alert",
+        "sent": "2026-11-14T10:15:00-06:00",
+        "effective": "2026-11-14T10:15:00-06:00",
+        "onset": "2026-11-14T11:00:00-06:00",
+        "expires": "2026-12-31T18:00:00-06:00",
+        "ends": "2026-12-31T19:00:00-06:00",
+        "status": "Actual",
+        "messageType": "Initial",
+        "category": "Met",
+        "severity": "Severe",
+        "certainty": "Observed",
+        "urgency": "Immediate",
+        "event": "Severe Thunderstorm Warning",
+        "senderName": "NWS Test",
+        "headline": "Severe Thunderstorm Warning issued November 14 at 10:15AM CST until December 31 at 6:00PM CST by NWS Test"
+      }
+    }
+  ]
+}

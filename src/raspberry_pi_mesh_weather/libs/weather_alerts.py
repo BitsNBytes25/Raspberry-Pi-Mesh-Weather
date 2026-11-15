@@ -1,222 +1,233 @@
-import requests
+"""NWS active-alert client.
+
+Fetches active alerts for a location and exposes:
+
+* `get_alerts()`   - a list of tracked alerts, as records of
+  {icon, title, id, expiration};
+* `get_new_alerts()` - only the alerts not yet broadcast, tracking
+  previously-broadcast ids in memory and pruning them when they expire.
+
+Only alerts whose event, severity, urgency and certainty all fall within the
+tracked sets (docs/weather_alert_keys.md) are considered; the rest are ignored.
+"""
 import logging
-from datetime import datetime
+import requests
+from datetime import datetime, timezone
 
-"""
-All event types, as provided by /alerts/types:
+from .icon_map import get_icon
 
-"911 Telephone Outage",
-"Administrative Message",
-"Air Quality Alert",
-"Air Stagnation Advisory",
-"Ashfall Advisory",
-"Ashfall Warning",
-"Avalanche Advisory",
-"Avalanche Warning",
-"Avalanche Watch",
-"Beach Hazards Statement",
-"Blizzard Warning",
-"Blowing Dust Advisory",
-"Blowing Dust Warning",
-"Blue Alert",
-"Brisk Wind Advisory",
-"Child Abduction Emergency",
-"Civil Danger Warning",
-"Civil Emergency Message",
-"Coastal Flood Advisory",
-"Coastal Flood Statement",
-"Coastal Flood Warning",
-"Coastal Flood Watch",
-"Cold Weather Advisory",
-"Dense Fog Advisory",
-"Dense Smoke Advisory",
-"Dust Advisory",
-"Dust Storm Warning",
-"Earthquake Warning",
-"Evacuation Immediate",
-"Extreme Heat Warning",
-"Extreme Heat Watch",
-"Extreme Cold Warning",
-"Extreme Cold Watch",
-"Extreme Fire Danger",
-"Extreme Wind Warning",
-"Fire Warning",
-"Fire Weather Watch",
-"Flash Flood Statement",
-"Flash Flood Warning",
-"Flash Flood Watch",
-"Flood Advisory",
-"Flood Statement",
-"Flood Warning",
-"Flood Watch",
-"Freeze Warning",
-"Freeze Watch",
-"Freezing Fog Advisory",
-"Freezing Spray Advisory",
-"Frost Advisory",
-"Gale Warning",
-"Gale Watch",
-"Hazardous Materials Warning",
-"Hazardous Seas Warning",
-"Hazardous Seas Watch",
-"Hazardous Weather Outlook",
-"Heat Advisory",
-"Heavy Freezing Spray Warning",
-"Heavy Freezing Spray Watch",
-"High Surf Advisory",
-"High Surf Warning",
-"High Wind Warning",
-"High Wind Watch",
-"Hurricane Force Wind Warning",
-"Hurricane Force Wind Watch",
-"Hurricane Warning",
-"Hurricane Watch",
-"Hydrologic Outlook",
-"Ice Storm Warning",
-"Lake Effect Snow Warning",
-"Lake Wind Advisory",
-"Lakeshore Flood Advisory",
-"Lakeshore Flood Statement",
-"Lakeshore Flood Warning",
-"Lakeshore Flood Watch",
-"Law Enforcement Warning",
-"Local Area Emergency",
-"Low Water Advisory",
-"Marine Weather Statement",
-"Nuclear Power Plant Warning",
-"Radiological Hazard Warning",
-"Red Flag Warning",
-"Rip Current Statement",
-"Severe Thunderstorm Warning",
-"Severe Thunderstorm Watch",
-"Severe Weather Statement",
-"Shelter In Place Warning",
-"Short Term Forecast",
-"Small Craft Advisory",
-"Snow Squall Warning",
-"Special Marine Warning",
-"Special Weather Statement",
-"Storm Surge Warning",
-"Storm Surge Watch",
-"Storm Warning",
-"Storm Watch",
-"Test",
-"Tornado Warning",
-"Tornado Watch",
-"Tropical Cyclone Local Statement",
-"Tropical Storm Warning",
-"Tropical Storm Watch",
-"Tsunami Advisory",
-"Tsunami Warning",
-"Tsunami Watch",
-"Typhoon Warning",
-"Typhoon Watch",
-"Volcano Warning",
-"Wind Advisory",
-"Winter Storm Warning",
-"Winter Storm Watch",
-"Winter Weather Advisory"
+#
+# Tracked NWS alert values, from docs/weather_alert_keys.md.
+#
+# An alert is only broadcast when its event, severity, urgency and certainty
+# all fall within the respective sets below; any alert failing a check is
+# ignored.
+#
+TRACKED_EVENTS = {
+	"ashfall warning",
+	"avalanche warning",
+	"blizzard warning",
+	"blowing dust warning",
+	"civil danger warning",
+	"civil emergency message",
+	"coastal flood warning",
+	"dust storm warning",
+	"earthquake warning",
+	"evacuation immediate",
+	"extreme heat warning",
+	"extreme cold warning",
+	"extreme fire danger",
+	"extreme wind warning",
+	"fire warning",
+	"flash flood warning",
+	"flood warning",
+	"hazardous materials warning",
+	"hazardous seas warning",
+	"heavy freezing spray warning",
+	"high surf warning",
+	"high wind warning",
+	"hurricane force wind warning",
+	"hurricane warning",
+	"ice storm warning",
+	"lake effect snow warning",
+	"lakeshore flood warning",
+	"law enforcement warning",
+	"local area emergency",
+	"nuclear power plant warning",
+	"radiological hazard warning",
+	"red flag warning",
+	"severe thunderstorm warning",
+	"shelter in place warning",
+	"snow squall warning",
+	"special marine warning",
+	"storm surge warning",
+	"storm warning",
+	"tornado warning",
+	"tropical storm warning",
+	"tsunami warning",
+	"typhoon warning",
+	"winter storm warning",
+}
 
-All severities:
-"Extreme",
-"Severe",
-"Moderate",
-"Minor",
-"Unknown"
+TRACKED_SEVERITIES = {
+	"extreme",
+	"severe",
+}
 
-All urgencies:
-"Immediate",
-"Expected",
-"Future",
-"Past",
-"Unknown"
+TRACKED_URGENCIES = {
+	"immediate",
+	"expected",
+}
 
-All Certainties:
-"Observed",
-"Likely",
-"Possible",
-"Unlikely",
-"Unknown"
-"""
+TRACKED_CERTAINTIES = {
+	"observed",
+	"likely",
+}
+
+#
+# Exact event name -> standard icon name, for the tracked events only.
+# "warning" is the glyph used where an event has no natural counterpart.
+#
+EVENT_ICONS = {
+	"ashfall warning": "warning",
+	"avalanche warning": "avalanche",
+	"blizzard warning": "snow",
+	"blowing dust warning": "dust",
+	"civil danger warning": "warning",
+	"civil emergency message": "warning",
+	"coastal flood warning": "flood",
+	"dust storm warning": "dust",
+	"earthquake warning": "warning",
+	"evacuation immediate": "warning",
+	"extreme heat warning": "heat",
+	"extreme cold warning": "freezing",
+	"extreme fire danger": "fire",
+	"extreme wind warning": "wind",
+	"fire warning": "fire",
+	"flash flood warning": "flood",
+	"flood warning": "flood",
+	"hazardous materials warning": "warning",
+	"hazardous seas warning": "ship",
+	"heavy freezing spray warning": "freezing",
+	"high surf warning": "surf",
+	"high wind warning": "wind",
+	"hurricane force wind warning": "cyclone",
+	"hurricane warning": "cyclone",
+	"ice storm warning": "snow",
+	"lake effect snow warning": "snow",
+	"lakeshore flood warning": "flood",
+	"law enforcement warning": "warning",
+	"local area emergency": "warning",
+	"nuclear power plant warning": "warning",
+	"radiological hazard warning": "warning",
+	"red flag warning": "fire",
+	"severe thunderstorm warning": "thunderstorm",
+	"shelter in place warning": "warning",
+	"snow squall warning": "snow",
+	"special marine warning": "ship",
+	"storm surge warning": "flood",
+	"storm warning": "warning",
+	"tornado warning": "cyclone",
+	"tropical storm warning": "cyclone",
+	"tsunami warning": "flood",
+	"typhoon warning": "cyclone",
+	"winter storm warning": "snow",
+}
+
+#
+# In-memory record of alert ids already broadcast: alert id -> expiration.
+# Expired entries are dropped on each call to keep memory bounded in the
+# long-running process.
+#
+_BROADCAST_IDS: dict[str, datetime] = {}
 
 
-def parse_alert_emojis(event_name):
+def parse_alert_icon(event_name):
 	"""
-    Parses an NWS event string, determines if it is a Watch or a Warning,
-    and appends a color block indicator along with time-remaining logic.
-    """
-	NWS_EVENT_EMOJIS = {
-		"tornado": "🌪️",
-		"thunderstorm": "⛈️",
-		"flash flood": "🌊",
-		"flood": "🌊",
-		"tsunami": "🌊",
-		"hurricane": "🌀",
-		"typhoon": "🌀",
-		"tropical storm": "🌀",
-		"blizzard": "❄️",
-		"winter storm": "❄️",
-		"ice storm": "❄️",
-		"snow": "❄️",
-		"freeze": "🥶",
-		"frost": "🥶",
-		"wind chill": "🥶",
-		"heat": "🥵",
-		"wind": "💨",
-		"gale": "💨",
-		"dust": "🏜️",
-		"sand": "🏜️",
-		"fog": "🌫️",
-		"dense smoke": "🌫️",
-		"air quality": "😷",
-		"fire": "🔥",
-		"red flag": "🔥",
-		"avalanche": "🏔️",
-		"rip current": "🏖️",
-		"surf": "🏖️",
-		"marine": "🚢",
-		"special weather statement": "ℹ️"
+	Resolve a tracked NWS event name to the alert glyph to display.
+
+	Exact match against the tracked events (EVENT_ICONS) so the glyph is
+	resolved through the active `icon_style`; anything else falls back to the
+	generic warning glyph.
+	"""
+	event_clean = (event_name or "").strip().lower()
+	return get_icon(EVENT_ICONS.get(event_clean, "warning"))
+
+
+def _is_tracked(props):
+	"""
+	Return True only when every tracked-value set is satisfied: event,
+	severity, urgency and certainty all within their tracked values.
+	"""
+	event = (props.get('event', '')).strip().lower()
+	if event not in TRACKED_EVENTS:
+		return False
+	if (props.get('severity', '')).strip().lower() not in TRACKED_SEVERITIES:
+		return False
+	if (props.get('urgency', '')).strip().lower() not in TRACKED_URGENCIES:
+		return False
+	return (props.get('certainty', '')).strip().lower() in TRACKED_CERTAINTIES
+
+
+def _alert_dict(props):
+	"""Build the broadcastable record for a single tracked alert."""
+	return {
+		"icon": parse_alert_icon(props.get("event", "")),
+		"title": props.get("headline", props.get("event", "Unknown Alert")),
+		"id": props.get("id", ""),
+		"expiration": datetime.fromisoformat(props["expires"]),
 	}
-
-	event_clean = event_name.lower()
-
-	for keyword, emoji in NWS_EVENT_EMOJIS.items():
-		if keyword in event_clean:
-			return emoji
-
-	return "⚠️"  # default
 
 
 def get_alerts(latitude, longitude):
+	"""
+	Fetch the active alerts for a location and return a list of records,
+	each {icon, title, id, expiration}, for the tracked alerts only.
+	Non-tracked alerts are ignored.
+	"""
 	url = f"https://api.weather.gov/alerts/active?point={latitude},{longitude}"
 	try:
 		response = requests.get(
 			url,
-			headers = {
+			headers={
 				"User-Agent": "RaspberryPiMeshWeather (https://github.com/BitsNBytes25/Raspberry-Pi-Mesh-Weather)"
 			}
 		)
-		response.raise_for_status()  # Raises an HTTPError for bad responses (4xx or 5xx)
+		response.raise_for_status()
 		data = response.json()
 		features = data.get("features", [])
-		if not features:
-			# Nothing going on, good!
-			return []
-
 		ret = []
-		# Loop through the list of active alerts
 		for alert in features:
 			props = alert.get("properties", {})
-
-			# Extract clean, normalized NWS properties
-			expires = datetime.fromisoformat(props.get('expires'))
-			event = props.get('headline', props.get('event', 'Unknown Alert'))
-			icon = parse_alert_emojis(props.get('event', 'Unknown Alert'))
-			ends = expires.strftime("%I:%M %p")
-			ret.append(f"{icon}  {event}")
-
+			if _is_tracked(props):
+				ret.append(_alert_dict(props))
 		return ret
-
 	except requests.exceptions.RequestException as e:
 		logging.error(f"Error fetching weather data from api.weather.gov: {e}")
-		return {}
+		return []
+
+
+def get_new_alerts(latitude, longitude):
+	"""
+	Return only the alerts not already broadcast.
+
+	Broadcast ids are held in memory (`_BROADCAST_IDS`) and pruned once their
+	expiration has passed, so the record stays small over time. On its first
+	call an in-memory process returns everything currently active; subsequent
+	calls return only alerts that appeared since the previous call.
+	"""
+	global _BROADCAST_IDS
+	alerts = get_alerts(latitude, longitude)
+	now = datetime.now(timezone.utc)
+	# Drop any whose stored expiration is now in the past.
+	_BROADCAST_IDS = {
+		alert_id: expires for alert_id, expires in _BROADCAST_IDS.items()
+		if expires >= now
+	}
+	new = []
+	for alert in alerts:
+		if alert["id"] in _BROADCAST_IDS:
+			continue
+		new.append(alert)
+		_BROADCAST_IDS[alert["id"]] = alert["expiration"]
+	return new

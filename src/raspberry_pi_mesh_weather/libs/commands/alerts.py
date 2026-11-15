@@ -21,7 +21,7 @@ import logging
 
 from .handler import command, CommandResponse, CommandResponseError, CommandResponseNoData, CommandResponseSuccess
 from raspberry_pi_mesh_weather.libs.config import config
-from raspberry_pi_mesh_weather.libs.weather_alerts import get_alerts
+from raspberry_pi_mesh_weather.libs.weather_alerts import get_new_alerts
 
 
 @command('alerts', direct=True, group=True)
@@ -44,12 +44,15 @@ def cmd_alerts(target: str | None = None) -> CommandResponse:
 
 	logging.debug('--- Running Alerts Fetch ---')
 	try:
-		alerts = get_alerts(lat, lon)
+		# Only ever-unseen tracked alerts: dedup lives in weather_alerts.
+		new_alerts = get_new_alerts(lat, lon)
 
-		if len(alerts) == 0:
+		if not new_alerts:
 			return CommandResponseNoData('No weather alerts at this time.')
 
-		return CommandResponseSuccess(f"{header}:\n" + '\n'.join(alerts))
+		return CommandResponseSuccess(
+			f"{header}:\n" + '\n'.join(f"{alert['icon']}  {alert['title']}" for alert in new_alerts)
+		)
 	except Exception as e:
 		error_msg = f"Weather Alerts: An error occurred during alert fetching/broadcasting: {e}"
 		print(f"Weather Alerts Error: {e}")

@@ -132,17 +132,18 @@ def test_run_sends_when_due_and_stays_silent_when_not(mocker):
 	sender = FakeSender()
 	base = datetime(2026, 11, 14)
 	clock = FakeClock([
-		base + timedelta(hours=7),           # in window, due -> send
-		base + timedelta(hours=7, minutes=1),  # in window, too soon -> skip
-		base + timedelta(hours=12),          # out of window -> skip
-		base + timedelta(hours=12, minutes=1), # out of window -> skip
+		base + timedelta(hours=7),           # forecast window, due -> send
+		base + timedelta(hours=7, minutes=1),  # forecast window, too soon -> skip
+		base + timedelta(hours=12),          # daytime window, current weather due -> send
+		base + timedelta(hours=12, minutes=1), # daytime window, too soon -> skip
 	])
 	svc = ScheduledTasks(sender, clock=clock)
 	patch_command(mocker, CommandResponseSuccess(message='F'))
 
 	run_loop(svc, 4)
 
-	assert sender.sent == ['F']
+	# 7 AM forecast plus the daytime current-weather broadcast at 12 PM.
+	assert sender.sent == ['F', 'F']
 
 
 def test_run_retries_after_failure(mocker):

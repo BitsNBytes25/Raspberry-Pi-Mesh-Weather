@@ -22,6 +22,8 @@ _STANDARD_NAMES = {
 	'sun', 'moon', 'sun_clouds', 'cloud',
 	'rain', 'drizzle', 'thunderstorm', 'snow', 'fog',
 	'freezing',
+	'cyclone', 'flood', 'heat', 'wind', 'dust', 'mask',
+	'fire', 'avalanche', 'surf', 'ship', 'info', 'warning',
 }
 
 # Every OpenWeatherMap icon code this project is expected to render.
@@ -159,3 +161,44 @@ def test_get_weather_icon_honours_shipped_default_style():
 	# dataclass / config.yaml.
 	assert get_weather_icon('10d') == chr(0x2614)
 	assert get_weather_icon('09d') == chr(0x2614)
+
+
+def test_get_icon_alert_names_modern(mocker):
+	"""
+	The alert-related standard names resolve to colour emoji in the modern
+	set.
+	"""
+	mocker.patch.object(icon_map.config.general, 'icon_style', 'modern')
+	assert get_icon('cyclone') == chr(0x1F300) + VS
+	assert get_icon('flood') == chr(0x1F30A) + VS
+	assert get_icon('heat') == chr(0x1F975) + VS
+	assert get_icon('wind') == chr(0x1F32C) + VS
+	assert get_icon('dust') == chr(0x1F3DC) + VS
+	assert get_icon('mask') == chr(0x1F637) + VS
+	assert get_icon('fire') == chr(0x1F525) + VS
+	assert get_icon('avalanche') == chr(0x1F3D4) + VS
+	assert get_icon('surf') == chr(0x1F3D6) + VS
+	assert get_icon('ship') == chr(0x1F6A2) + VS
+	assert get_icon('info') == chr(0x2139) + VS
+	assert get_icon('warning') == chr(0x26A0) + VS
+
+
+def test_get_icon_alert_names_compatible(mocker):
+	"""
+	The compatible set stays within the widely-supported glyph ranges; alert
+	names with no basic-symbol equivalent degrade to the warning sign
+	(U+26A0).
+	"""
+	mocker.patch.object(icon_map.config.general, 'icon_style', 'compatible')
+	assert get_icon('cyclone') == chr(0x1F300)
+	assert get_icon('flood') == chr(0x1F30A)
+	assert get_icon('heat') == chr(0x2668)
+	assert get_icon('wind') == chr(0x1F32C)
+	assert get_icon('dust') == chr(0x1F3DC)
+	assert get_icon('mask') == chr(0x26A0)
+	assert get_icon('fire') == chr(0x26A0)
+	assert get_icon('avalanche') == chr(0x1F3D4)
+	assert get_icon('surf') == chr(0x1F3D6)
+	assert get_icon('ship') == chr(0x26A0)
+	assert get_icon('info') == chr(0x26A0)
+	assert get_icon('warning') == chr(0x26A0)
