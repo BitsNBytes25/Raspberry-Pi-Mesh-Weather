@@ -22,7 +22,7 @@ from .handler import command, CommandResponse, CommandResponseSuccess, _direct_c
 
 @command('help', direct=True)
 def cmd_direct_help(target: str | None = None) -> CommandResponse:
-	message = 'Available commands:\n'
+	message = ''
 	commands = []
 	for cmd in _direct_commands.keys():
 		if _direct_commands[cmd]._settings['auth']:
@@ -36,7 +36,7 @@ def cmd_direct_help(target: str | None = None) -> CommandResponse:
 
 @command('help', group=True)
 def cmd_group_help(target: str | None = None) -> CommandResponse:
-	message = 'Available commands:\n'
+	message = ''
 	commands = _group_commands.keys()
 	message += '!' + ' | !'.join(commands)
 

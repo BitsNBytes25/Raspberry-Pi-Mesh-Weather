@@ -43,8 +43,7 @@ def get_heat_index(temp_c, humidity):
 	return (hi_f - 32) * 5/9
 
 
-@command('temp', direct=True, group=True)
-@command('temperature', direct=True, group=True)
+@command('temperature', direct=True, group=True, alias='temp')
 def cmd_temp(target: str | None = None) -> CommandResponse:
 	temp = get_temperature()
 	humidity = get_humidity()

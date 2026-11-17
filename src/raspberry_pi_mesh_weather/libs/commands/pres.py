@@ -21,8 +21,7 @@ from .handler import command, CommandResponse, CommandResponseError, CommandResp
 from raspberry_pi_mesh_weather.libs.pressure import get_pressure, get_pressure_change
 
 
-@command('pres', direct=True, group=True)
-@command('pressure', direct=True, group=True)
+@command('pressure', direct=True, group=True, alias='pres')
 def cmd_pressure(target: str | None = None) -> CommandResponse:
 	pressure = get_pressure()
 	pressure_change = get_pressure_change()

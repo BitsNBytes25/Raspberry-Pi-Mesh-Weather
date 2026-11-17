@@ -52,13 +52,15 @@ class CommandResponseNoData(CommandResponse):
 
 _direct_commands = {}
 _group_commands = {}
+_aliases = {}
 
 
 def command(
 	name: str,
 	auth: bool = False,
 	direct: bool = False,
-	group: bool = False
+	group: bool = False,
+	alias: None | str | list[str] = None
 ):
 	"""
 	Decorator for commands that can be executed over the mesh
@@ -67,6 +69,7 @@ def command(
 	:param auth: True/False if command only responds to authenticated devices (default: False)
 	:param direct: True/False if command is a DM command (default: False)
 	:param group: True/False if command is a #weather channel command (default: False)
+	:param alias: Optional list of aliases (or single) to allow running this command with an alias
 	:return:
 	"""
 	def decorator(func):
@@ -90,8 +93,29 @@ def command(
 		if group:
 			_group_commands[name] = wrapper
 
+		if alias is not None:
+			if isinstance(alias, str):
+				_aliases[alias] = name
+			else:
+				for a in alias:
+					_aliases[a] = name
+
 		return wrapper
 	return decorator
+
+
+def resolve_cmd_alias(cmd: str) -> str:
+	"""
+	Resolve a command to its actual cmd while supporting aliases
+
+	If the command requested is not an alias, just the raw cmd is returned instead
+
+	:param cmd:
+	:return:
+	"""
+	if cmd in _aliases:
+		return _aliases[cmd]
+	return cmd
 
 
 def get_command(cmd: str) -> Callable[[str | None], CommandResponse] | None:
@@ -103,13 +127,14 @@ def get_command(cmd: str) -> Callable[[str | None], CommandResponse] | None:
 	cmd = cmd.lower()
 	if cmd.startswith('!'):
 		# Indicates a group command.
-		cmd = cmd[1:]
+		cmd = resolve_cmd_alias(cmd[1:])
 		if cmd in _group_commands:
 			return _group_commands[cmd]
 		else:
 			return None
 	else:
 		# Lack of '!' indicates a direct command
+		cmd = resolve_cmd_alias(cmd)
 		if cmd in _direct_commands:
 			return _direct_commands[cmd]
 		else:

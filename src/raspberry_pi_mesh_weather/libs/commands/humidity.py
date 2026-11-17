@@ -21,8 +21,7 @@ from .handler import command, CommandResponse, CommandResponseNoData, CommandRes
 from raspberry_pi_mesh_weather.libs.humidity import get_humidity
 
 
-@command('humid', direct=True, group=True)
-@command('humidity', direct=True, group=True)
+@command('humidity', direct=True, group=True, alias='humid')
 def cmd_humidity(target: str | None = None) -> CommandResponse:
 	humidity = get_humidity()
 	if humidity is None:

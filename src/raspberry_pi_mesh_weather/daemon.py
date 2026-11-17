@@ -142,7 +142,11 @@ async def daemon_main(test: bool = False):
 
 	if test:
 		# Get a list of commands to test too
-		cmds = ['all', 'ping', 'uptime', 'cpu', 'temperature', 'pressure', 'humidity', 'forecast', 'alerts', 'net', 'icons', 'wind', 'sun']
+		from .libs.commands.handler import _direct_commands
+		cmds = []
+		for cmd in _direct_commands.keys():
+			if not _direct_commands[cmd]._settings['auth']:
+				cmds.append(cmd)
 		for cmd in cmds:
 			print('')
 			c = get_command(cmd)
