@@ -9,6 +9,8 @@ general:
   #   "compatible" - U+2600-U+27BF block glyphs, safest on mesh devices
   #                  (default; avoids "*" glyphs on limited client fonts)
   icon_style: "compatible"
+  # Name or organisation operating this service, displayed by the 'about' command.
+  operated_by: ""
 
 # Display Configuration
 # Configuration to control the display on the raspberry pi, if one is present.

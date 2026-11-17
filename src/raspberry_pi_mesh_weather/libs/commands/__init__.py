@@ -30,6 +30,7 @@ from .handler import (
 # Individual commands.  Importing each module registers its command(s)
 # with the handler's direct/group registries.
 from .alerts import cmd_alerts
+from .about import cmd_about
 from .all_sensors import cmd_all_sensors
 from .cpu import cmd_cpu
 from .forecast import cmd_daily_forecast

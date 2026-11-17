@@ -55,6 +55,8 @@ class GeneralConfig:
 	#   'modern'     - colour emoji (best on modern clients)
 	#   'compatible' - U+2600-U+27BF block glyphs (safest on mesh devices)
 	icon_style: str = 'compatible'
+	# Name/organisation operating this service, shown by the 'about' command.
+	operated_by: str = ''
 
 
 @dataclass

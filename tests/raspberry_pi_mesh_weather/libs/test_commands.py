@@ -1,11 +1,13 @@
 from datetime import datetime, timezone
 
+import importlib.metadata
 import pytest
 
 from raspberry_pi_mesh_weather.libs import sun as sun_lib
 from raspberry_pi_mesh_weather.libs import commands
 from raspberry_pi_mesh_weather.libs import icon_map
 from raspberry_pi_mesh_weather.libs.commands import (
+	about,
 	all_sensors,
 	forecast,
 	sun as sun_command_module,
@@ -977,7 +979,7 @@ def test_sun_command_no_data(mocker):
 
 def test_sun_command_missing_label(mocker):
 	result = _patch_sun_cmd(mocker, _SUNRISE, _SUNSET, label='')
-
+ 
 	assert result.success is True
 	assert result.has_data is True
 	assert result.message == (
@@ -985,3 +987,36 @@ def test_sun_command_missing_label(mocker):
 		'Sunrise 12:13 PM (8h 46m ago)\n'
 		'Sunset 10:18 PM (in 1h 19m)'
 	)
+
+
+# --- about --------------------------------------------------------
+#
+# The 'about' command reports the application version (from the installed
+# package metadata, set by pyproject.toml), the project link, and the
+# operator name from general.operated_by when configured.
+
+
+def test_about_default_operated_by():
+	result = about.cmd_about(None)
+	version = importlib.metadata.version('raspberry-pi-mesh-weather')
+	expected = (
+		f'github.com/BitsNBytes25/Raspberry-Pi-Mesh-Weather | v{version}'
+	)
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == expected
+	assert len(result.message) <= 130
+
+
+def test_about_with_operated_by(mocker):
+	mocker.patch.object(about.config.general, 'operated_by', 'Charlie')
+	result = about.cmd_about(None)
+	version = importlib.metadata.version('raspberry-pi-mesh-weather')
+	expected = (
+		f'github.com/BitsNBytes25/Raspberry-Pi-Mesh-Weather | v{version} '
+		'| operated by Charlie'
+	)
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == expected
+	assert len(result.message) <= 130

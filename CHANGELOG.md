@@ -36,6 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`icons` command** — A minimal direct-message diagnostic that returns every weather glyph of the currently configured icon style (via `icon_map.get_icon`) in a fixed order, so the sender can verify which icons render on their device. Response is a single short line (≤ 17 characters compatible, ≤ 26 modern) and always fits the 130/200-character mesh limits.
 - **`freezing` icon** (`icon_map.py`) — New standard icon name for sub-1°C conditions. Modern set: `🥶️` (Ice Face, U+1F976 + VS). Compatible set: `❄❄` (U+2744 × 2, double snowflake to distinguish from the single-snowflake `snow` glyph). Included in `STANDARD_ICON_NAMES` so the `icons` diagnostic now shows 10 glyphs.
 - Current conditions (via `!all`) are sent during the daytime
+- **`about` command** — New direct-message `about` command reporting the application version (read via `importlib.metadata` from the installed package metadata, which is set by `pyproject.toml`), the hard-coded project link, and the "operated by <name>" segment when the new `general.operated_by` setting is configured (segment omitted when empty). Output is a single line that always fits the 130/200-character mesh limits.
+- **`general.operated_by` setting** — New key in `GeneralConfig` (defaults to an empty string, loaded via the existing `general` config section) consumed by the `about` command; documented in `config.yaml.example`.
+- **About command tests** — `test_commands.py` adds tests for the default (no `operated_by`) and configured states, asserting the full message and the 130-character limit.
 
 ### Changed
 
