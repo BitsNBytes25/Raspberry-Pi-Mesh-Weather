@@ -137,10 +137,12 @@ def cmd_daily_forecast(target: str | None = None) -> CommandResponse:
 			return CommandResponseError('Failed to retrieve forecast data.')
 
 		summary = _forecast_summary(entries)
-		lines = [
-			f"{entry['icon']}  {_time_label(entry['hour'])}: {_temp_label(entry)}"
-			for entry in entries
-		]
+		lines = []
+		for entry in entries:
+			time = _time_label(entry['hour'])
+			spacer = (4 - len(time)) * ' '
+			lines.append(f"{entry['icon']}  {time}:{spacer}{_temp_label(entry)}")
+
 		message = f"{header}: {summary}\n" + "\n".join(lines)
 		return CommandResponseSuccess(message)
 	except Exception as e:

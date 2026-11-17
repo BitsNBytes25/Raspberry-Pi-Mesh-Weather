@@ -438,11 +438,11 @@ def test_forecast_command_evening_spills_into_tomorrow(mocker):
 	assert result.has_data is True
 	assert result.message == (
 		'Forecast for cbus: Light rain until 3A\n'
-		'🌧️  9P: 10°C/49°F\n'
+		'🌧️  9P:  10°C/49°F\n'
 		'🌧️  12A: 7°C/45°F\n'
-		'☁️  3A: 5°C/41°F\n'
-		'🌧️  6A: 5°C/41°F\n'
-		'🌧️  9A: 5°C/41°F'
+		'☁️  3A:  5°C/41°F\n'
+		'🌧️  6A:  5°C/41°F\n'
+		'🌧️  9A:  5°C/41°F'
 	)
 
 
@@ -457,9 +457,9 @@ def test_forecast_command_morning_all_today(mocker):
 	assert result.success is True
 	assert result.message == (
 		'Forecast for cbus: Light rain until 12P\n'
-		'🌧️  9A: 10°C/49°F\n'
+		'🌧️  9A:  10°C/49°F\n'
 		'☁️  12P: 4°C/39°F\n'
-		'☁️  3P: 10°C/50°F'
+		'☁️  3P:  10°C/50°F'
 	)
 
 
@@ -470,7 +470,7 @@ def test_forecast_command_missing_label_uses_plain_header(mocker):
 	assert result.success is True
 	assert result.message == (
 		'Forecast: Clear sky\n'
-		'☀️  9A: 10°C/49°F'
+		'☀️  9A:  10°C/49°F'
 	)
 
 
@@ -487,7 +487,7 @@ def test_forecast_command_around_when_calm_then_active(mocker):
 	assert result.message == (
 		'Forecast for cbus: Light rain around 7A\n'
 		'☀️  10P: 2°C/36°F\n'
-		'🌧️  7A: 4°C/40°F\n'
+		'🌧️  7A:  4°C/40°F\n'
 		'🌧️  10A: 7°C/45°F'
 	)
 
@@ -503,8 +503,8 @@ def test_forecast_command_active_then_calm_uses_until(mocker):
 	assert result.success is True
 	assert result.message == (
 		'Forecast for cbus: Light rain until 7A\n'
-		'🌧️  9P: 5°C/41°F\n'
-		'☀️  7A: 1°C/34°F'
+		'🌧️  9P:  5°C/41°F\n'
+		'☀️  7A:  1°C/34°F'
 	)
 
 
@@ -519,9 +519,9 @@ def test_forecast_command_single_state(mocker):
 	assert result.success is True
 	assert result.message == (
 		'Forecast for cbus: Clear sky\n'
-		'☀️  9A: 10°C/49°F\n'
+		'☀️  9A:  10°C/49°F\n'
 		'☀️  12P: 8°C/47°F\n'
-		'☀️  3P: 10°C/50°F'
+		'☀️  3P:  10°C/50°F'
 	)
 
 
@@ -539,10 +539,10 @@ def test_forecast_command_skips_calm_to_first_notable(mocker):
 	assert result.success is True
 	assert result.message == (
 		'Forecast for cbus: Light rain around 3A\n'
-		'☀️  9P: 8°C/46°F\n'
+		'☀️  9P:  8°C/46°F\n'
 		'☁️  12A: 7°C/45°F\n'
-		'🌧️  3A: 4°C/39°F\n'
-		'🌧️  6A: 4°C/39°F'
+		'🌧️  3A:  4°C/39°F\n'
+		'🌧️  6A:  4°C/39°F'
 	)
 
 
@@ -558,9 +558,9 @@ def test_forecast_command_all_calm_reports_current(mocker):
 	assert result.success is True
 	assert result.message == (
 		'Forecast for cbus: Clear sky\n'
-		'☀️  9P: 8°C/46°F\n'
+		'☀️  9P:  8°C/46°F\n'
 		'☁️  12A: 7°C/45°F\n'
-		'☁️  3A: 6°C/43°F'
+		'☁️  3A:  6°C/43°F'
 	)
 
 
