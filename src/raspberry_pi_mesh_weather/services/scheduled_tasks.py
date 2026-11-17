@@ -32,12 +32,16 @@ class ScheduledTasks(Service):
 	only implement how they physically transmit (via `broadcast`), so every task
 	here can work with either MeshCore or Meshtastic unchanged.
 
-	Currently only the daily forecast is scheduled, but this is the home for the
-	other hourly jobs (current weather during the day, sunrise/sunset, ...).
+	Scheduled jobs: weather alerts (checked every 5 minutes), the daily
+	forecast (6-9 AM and 4-6 PM), and current weather (10 AM-4 PM).  Alerts
+	are checked first each tick so that an alert broadcast takes priority over
+	the other jobs.  This is also the home for any additional jobs
+	(sunrise/sunset, ...).
 	"""
 
 	# Timers in seconds
 	HOURLY_INTERVAL = 3600  # 1 hour
+	ALERT_INTERVAL = 300  # 5 minutes
 	SLEEP_SECONDS = 60  # 1 minute poll
 
 	def __init__(self, sender, clock=None):
@@ -48,6 +52,7 @@ class ScheduledTasks(Service):
 		self._current_timestamp = self._clock().now().timestamp() # Kept up to date each tick
 		self._last_forecast = 0
 		self._last_current = 0
+		self._last_alert = 0
 
 	async def run_daily_forecast(self) -> bool:
 		"""
@@ -93,6 +98,28 @@ class ScheduledTasks(Service):
 			return True
 		return False
 
+	async def run_alerts(self) -> bool:
+		"""
+		Fetch new weather alerts and broadcast them over the mesh.
+
+		Limited to run only once per 5 minutes.
+		"""
+		if (self._current_timestamp - self._last_alert) < self.ALERT_INTERVAL:
+			# Last alert check was recent, do not hammer the API
+			return False
+
+		cmd = get_command('!alerts')
+		if cmd is None:
+			return False
+
+		result = cmd(None)
+		if result.success and result.has_data:
+			# Command successfully completed, send the broadcast and make a log of when it was sent
+			await self.sender.broadcast(result.message)
+			self._last_alert = self._current_timestamp
+			return True
+		return False
+
 	async def load(self) -> bool:
 		# The sender (radio) is already loaded by the caller; nothing else to init.
 		return True
@@ -108,21 +135,25 @@ class ScheduledTasks(Service):
 			self._current_timestamp = now.timestamp()
 			sent = False # Only send one broadcast per tick
 
-			# Schedule for automated tasks
-			if 6 <= hour <= 9:
-				# Run the forecast between hours of 6a-9a
-				if await self.run_daily_forecast():
-					sent = True
-			elif 10 <= hour <= 15:
-				# Provide current weather during the day
-				if await self.run_current_weather():
-					sent = True
-			elif 16 <= hour <= 18:
-				# Run the forecast between hours of 4p-6p
-				if await self.run_daily_forecast():
-					sent = True
+			# Alerts first: an alert broadcast preempts the other jobs for
+			# this tick.
+			if not sent and await self.run_alerts():
+				sent = True
 
-			# @todo sent will be used for additional checks
-			# to prevent multiple messages from being sent within one minute.
+			# Schedule for automated tasks (skipped if an alert already used
+			# this tick's broadcast slot)
+			if not sent:
+				if 6 <= hour <= 9:
+					# Run the forecast between hours of 6a-9a
+					if await self.run_daily_forecast():
+						sent = True
+				elif 10 <= hour <= 15:
+					# Provide current weather during the day
+					if await self.run_current_weather():
+						sent = True
+				elif 16 <= hour <= 18:
+					# Run the forecast between hours of 4p-6p
+					if await self.run_daily_forecast():
+						sent = True
 
 			await asyncio.sleep(self.SLEEP_SECONDS)

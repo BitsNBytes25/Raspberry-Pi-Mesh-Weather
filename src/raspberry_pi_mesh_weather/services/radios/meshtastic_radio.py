@@ -35,19 +35,6 @@ class MeshtasticRadio(Service):
 		"""
 		self.radio.sendText(text=text)
 
-	async def run_alerts(self) -> bool:
-		cmd = get_command('!alerts')
-		if cmd is None:
-			return False
-
-		result = cmd(None)
-		if result.success and result.has_data:
-			# Broadcast to all nodes (or a specific group if MESH_PORT is set)
-			self.radio.sendText(text=result.message)
-			return True
-		else:
-			return result.success
-
 	def run_direct_message(self, packet, interface):
 		"""
 		Event to handle direct messages received by this radio
@@ -256,10 +243,8 @@ class MeshtasticRadio(Service):
 	async def run(self):
 		# Timers in seconds
 		FLOOD_INTERVAL = 3600  # 1 hour
-		ALERT_INTERVAL = 1800  # 30 minutes
 
 		last_flood = 0
-		last_alerts = 0
 
 		logging.debug('Subscribing to channel messages...')
 		pub.subscribe(self.run_rx_log, 'meshtastic.receive')
@@ -284,11 +269,5 @@ class MeshtasticRadio(Service):
 				logging.debug('Sending flood advert...')
 				self.radio.sendTelemetry()
 				last_flood = now
-
-			if now - last_alerts > ALERT_INTERVAL:
-				successful = await self.run_alerts()
-				if successful:
-					# Allow this to run multiple times if the first attempt failed.
-					last_alerts = now
 
 			await asyncio.sleep(60)

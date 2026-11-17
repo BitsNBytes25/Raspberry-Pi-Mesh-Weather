@@ -37,19 +37,6 @@ class MeshcoreRadio(Service):
 		"""
 		await self.radio.commands.send_chan_msg(self.weather_channel, text)
 
-	async def run_alerts(self) -> bool:
-		cmd = get_command('!alerts')
-		if cmd is None:
-			return False
-
-		result = cmd(None)
-		if result.success and result.has_data:
-			# Broadcast to all nodes (or a specific group if MESH_PORT is set)
-			await self.radio.commands.send_chan_msg(self.weather_channel, result.message)
-			return True
-		else:
-			return result.success
-
 	async def run_channel_message(self, event):
 		"""
 		Handle messages received on a channel;
@@ -232,11 +219,9 @@ class MeshcoreRadio(Service):
 		# Timers in seconds
 		LOCAL_INTERVAL = 900  # 15 minutes
 		FLOOD_INTERVAL = 10800  # 3 hours
-		ALERT_INTERVAL = 1800  # 30 minutes
 
 		last_local = 0
 		last_flood = 0
-		last_alerts = 0
 
 		# Subscribe to the "#weather" channel
 		logging.debug('Subscribing to channel #weather...')
@@ -285,11 +270,5 @@ class MeshcoreRadio(Service):
 				logging.debug('Sending local advert...')
 				await self.radio.commands.send_advert(False)
 				last_local = now
-
-			if now - last_alerts > ALERT_INTERVAL:
-				successful = await self.run_alerts()
-				if successful:
-					# Allow this to run multiple times if the first attempt failed.
-					last_alerts = now
 
 			await asyncio.sleep(60)
