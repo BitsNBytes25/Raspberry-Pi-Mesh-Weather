@@ -32,6 +32,8 @@ def cmd_wind(target: str | None = None) -> CommandResponse:
 	if wind_speed is None:
 		return CommandResponseNoData('Sorry, but no wind available')
 
+	if wind_speed < 1.0:
+		return CommandResponseSuccess('Currently no wind')
 	message = f'Current wind here is {round(wind_speed, 1)} m/s'
 	compass = get_wind_compass()
 	if compass:

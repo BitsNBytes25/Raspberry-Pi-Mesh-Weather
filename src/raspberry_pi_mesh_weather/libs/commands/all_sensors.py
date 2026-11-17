@@ -82,8 +82,11 @@ def cmd_all_sensors(target: str | None = None) -> CommandResponse:
 		else:
 			sensors.append(f"{pressure:.1f} hPa")
 	if wind_speed is not None:
-		compass = f' {wind_compass}' if wind_compass else ''
-		sensors.append(f"wind {wind_speed:.0f} m/s{compass}")
+		if wind_speed < 1.0:
+			sensors.append('calm wind')
+		else:
+			compass = f' {wind_compass}' if wind_compass else ''
+			sensors.append(f"wind {wind_speed:.0f} m/s{compass}")
 	# The next sun event only: pre-dawn -> sunrise, daytime -> sunset.  After
 	# today's sunset the OWM current-conditions response carries no future
 	# event, so nothing is appended in the evening.
