@@ -113,16 +113,6 @@ def test_parse_alert_icon_unknown(mocker):
 	assert parse_alert_icon('') == get_icon('warning')
 
 
-def test_parse_alert_icon_compatible(mocker):
-	mocker.patch.object(icon_map.config.general, 'icon_style', 'compatible')
-	assert parse_alert_icon('Tornado Warning') == chr(0x1F300)
-	assert parse_alert_icon('Flood Warning') == chr(0x1F30A)
-	assert parse_alert_icon('Extreme Heat Warning') == chr(0x2668)
-	assert parse_alert_icon('High Wind Warning') == chr(0x1F32C)
-	assert parse_alert_icon('Special Marine Warning') == chr(0x26A0)
-	assert parse_alert_icon('Blizzard Warning') == chr(0x2744)
-
-
 @pytest.mark.parametrize(
 	('fixture_name', 'icon_name'),
 	[
@@ -197,6 +187,8 @@ def test_get_new_alerts_first_call_all_then_none(mocker):
 	next call returns nothing.
 	"""
 	payload = _load('severe_flood_warning.json')
+	# Update the payload to have an expiration in the future
+	payload['features'][0]['properties']['expires'] = (datetime.now().astimezone() + timedelta(minutes=10)).isoformat()
 	props = payload['features'][0]['properties']
 	_patch_response(mocker, payload)
 

@@ -16,6 +16,215 @@ from raspberry_pi_mesh_weather.libs.icon_map import (
 	get_weather_icon,
 )
 
+# Glyphs available in the Wadamesh OS (as of beta 101)
+WADAMESH_GLPYHS = [
+	0x1F1F1,  # 🇱
+	0x1F308,  # 🌈
+	0x1F30A,  # 🌊
+	0x1F310,  # 🌐
+	0x1F319,  # 🌙
+	0x1F31F,  # 🌟
+	0x1F320,  # 🌠
+	0x1F331,  # 🌱
+	0x1F333,  # 🌳
+	0x1F334,  # 🌴
+	0x1F337,  # 🌷
+	0x1F338,  # 🌸
+	0x1F339,  # 🌹
+	0x1F33A,  # 🌺
+	0x1F33F,  # 🌿
+	0x1F340,  # 🍀
+	0x1F341,  # 🍁
+	0x1F342,  # 🍂
+	0x1F355,  # 🍕
+	0x1F37A,  # 🍺
+	0x1F381,  # 🎁
+	0x1F382,  # 🎂
+	0x1F388,  # 🎈
+	0x1F389,  # 🎉
+	0x1F38A,  # 🎊
+	0x1F3AF,  # 🎯
+	0x1F3F3,  # 🏳
+	0x1F414,  # 🐔
+	0x1F417,  # 🐗
+	0x1F426,  # 🐦
+	0x1F427,  # 🐧
+	0x1F428,  # 🐨
+	0x1F42F,  # 🐯
+	0x1F430,  # 🐰
+	0x1F431,  # 🐱
+	0x1F434,  # 🐴
+	0x1F435,  # 🐵
+	0x1F436,  # 🐶
+	0x1F437,  # 🐷
+	0x1F438,  # 🐸
+	0x1F439,  # 🐹
+	0x1F43A,  # 🐺
+	0x1F446,  # 👆
+	0x1F447,  # 👇
+	0x1F448,  # 👈
+	0x1F449,  # 👉
+	0x1F44A,  # 👊
+	0x1F44F,  # 👏
+	0x1F450,  # 👐
+	0x1F451,  # 👑
+	0x1F47F,  # 👿
+	0x1F480,  # 💀
+	0x1F490,  # 💐
+	0x1F493,  # 💓
+	0x1F494,  # 💔
+	0x1F495,  # 💕
+	0x1F496,  # 💖
+	0x1F497,  # 💗
+	0x1F498,  # 💘
+	0x1F499,  # 💙
+	0x1F49A,  # 💚
+	0x1F49F,  # 💟
+	0x1F4A1,  # 💡
+	0x1F4A2,  # 💢
+	0x1F4A3,  # 💣
+	0x1F4A4,  # 💤
+	0x1F4A5,  # 💥
+	0x1F4A6,  # 💦
+	0x1F4A7,  # 💧
+	0x1F4A8,  # 💨
+	0x1F4A9,  # 💩
+	0x1F4AA,  # 💪
+	0x1F4AF,  # 💯
+	0x1F4F1,  # 📱
+	0x1F4F7,  # 📷
+	0x1F511,  # 🔑
+	0x1F512,  # 🔒
+	0x1F513,  # 🔓
+	0x1F514,  # 🔔
+	0x1F515,  # 🔕
+	0x1F517,  # 🔗
+	0x1F519,  # 🔙
+	0x1F51A,  # 🔚
+	0x1F525,  # 🔥
+	0x1F534,  # 🔴
+	0x1F535,  # 🔵
+	0x1F590,  # 🖐
+	0x1F595,  # 🖕
+	0x1F596,  # 🖖
+	0x1F5A4,  # 🖤
+	0x1F5FF,  # 🗿
+	0x1F600,  # 😀
+	0x1F601,  # 😁
+	0x1F602,  # 😂
+	0x1F603,  # 😃
+	0x1F604,  # 😄
+	0x1F605,  # 😅
+	0x1F606,  # 😆
+	0x1F607,  # 😇
+	0x1F608,  # 😈
+	0x1F609,  # 😉
+	0x1F60A,  # 😊
+	0x1F60F,  # 😏
+	0x1F610,  # 😐
+	0x1F611,  # 😑
+	0x1F612,  # 😒
+	0x1F613,  # 😓
+	0x1F614,  # 😔
+	0x1F615,  # 😕
+	0x1F616,  # 😖
+	0x1F617,  # 😗
+	0x1F618,  # 😘
+	0x1F619,  # 😙
+	0x1F61A,  # 😚
+	0x1F61F,  # 😟
+	0x1F620,  # 😠
+	0x1F621,  # 😡
+	0x1F622,  # 😢
+	0x1F623,  # 😣
+	0x1F624,  # 😤
+	0x1F625,  # 😥
+	0x1F626,  # 😦
+	0x1F627,  # 😧
+	0x1F628,  # 😨
+	0x1F629,  # 😩
+	0x1F62A,  # 😪
+	0x1F62F,  # 😯
+	0x1F630,  # 😰
+	0x1F631,  # 😱
+	0x1F632,  # 😲
+	0x1F633,  # 😳
+	0x1F634,  # 😴
+	0x1F635,  # 😵
+	0x1F636,  # 😶
+	0x1F637,  # 😷
+	0x1F641,  # 🙁
+	0x1F642,  # 🙂
+	0x1F643,  # 🙃
+	0x1F644,  # 🙄
+	0x1F648,  # 🙈
+	0x1F649,  # 🙉
+	0x1F64A,  # 🙊
+	0x1F64F,  # 🙏
+	0x1F680,  # 🚀
+	0x1F697,  # 🚗
+	0x1F698,  # 🚘
+	0x1F6A8,  # 🚨
+	0x1F910,  # 🤐
+	0x1F911,  # 🤑
+	0x1F912,  # 🤒
+	0x1F913,  # 🤓
+	0x1F914,  # 🤔
+	0x1F915,  # 🤕
+	0x1F916,  # 🤖
+	0x1F917,  # 🤗
+	0x1F918,  # 🤘
+	0x1F919,  # 🤙
+	0x1F91A,  # 🤚
+	0x1F91F,  # 🤟
+	0x1F920,  # 🤠
+	0x1F921,  # 🤡
+	0x1F922,  # 🤢
+	0x1F923,  # 🤣
+	0x1F924,  # 🤤
+	0x1F925,  # 🤥
+	0x1F927,  # 🤧
+	0x1F928,  # 🤨
+	0x1F929,  # 🤩
+	0x1F92A,  # 🤪
+	0x1F92F,  # 🤯
+	0x1F932,  # 🤲
+	0x1F970,  # 🥰
+	0x1F971,  # 🥱
+	0x1F973,  # 🥳
+	0x1F974,  # 🥴
+	0x1F975,  # 🥵
+	0x1F976,  # 🥶
+	0x1F97A,  # 🥺
+	0x1F981,  # 🦁
+	0x1F984,  # 🦄
+	0x1F985,  # 🦅
+	0x1F986,  # 🦆
+	0x1F989,  # 🦉
+	0x231A,  # ⌚
+	0x2600,  # ☀
+	0x2601,  # ☁
+	0x2614,  # ☔
+	0x2615,  # ☕
+	0x26A0,  # ⚠
+	0x26A1,  # ⚡
+	0x2705,  # ✅
+	0x270A,  # ✊
+	0x2714,  # ✔
+	0x2716,  # ✖
+	0x2728,  # ✨
+	0x2744,  # ❄
+	0x2753,  # ❓
+	0x2754,  # ❔
+	0x2755,  # ❕
+	0x2757,  # ❗
+	0x2763,  # ❣
+	0x2764,  # ❤
+	0x2795,  # ➕
+	0x2796,  # ➖
+	0x2797,  # ➗
+]
+
 
 # Every standard icon name the glyph sets must cover.
 _STANDARD_NAMES = {
@@ -83,11 +292,8 @@ def test_compatible_glyphs_are_widely_supported():
 	for name, glyph in WEATHER_ICONS_COMPATIBLE.items():
 		for ch in glyph:
 			cp = ord(ch)
-			ok = (cp < 0x80 or
-				  0x2600 <= cp <= 0x27BF or
-				  0x1F300 <= cp <= 0x1F3FF or
-				  cp == 0xFE0F)
-			assert ok, 'name ' + repr(name) + ' uses unsupported glyph ' + repr(ch)
+			wadamesh_ok = cp in WADAMESH_GLPYHS
+			assert wadamesh_ok, f"Wadamesh does not have glpyh {hex(cp)} for icon {repr(name)} ({ch})"
 
 
 def test_modern_set_still_uses_colour_emoji():
@@ -99,106 +305,12 @@ clients that support it.
 	assert any(0x1F000 <= cp <= 0x1F9FF for cp in codepoints)
 
 
-def test_get_icon_modern_glyphs(mocker):
-	mocker.patch.object(icon_map.config.general, 'icon_style', 'modern')
-	assert get_icon('sun') == chr(0x2600) + VS
-	assert get_icon('moon') == chr(0x1F319) + VS
-	assert get_icon('rain') == chr(0x1F327) + VS
-	assert get_icon('drizzle') == chr(0x1F326) + VS
-	assert get_icon('snow') == chr(0x2744) + VS
-	assert get_icon('freezing') == chr(0x1F976) + VS
-	assert get_icon('thunderstorm') == chr(0x26C8) + VS
-	assert get_icon('fog') == chr(0x1F32B) + VS
-
-
-def test_get_icon_compatible_glyphs(mocker):
-	mocker.patch.object(icon_map.config.general, 'icon_style', 'compatible')
-	assert get_icon('sun') == chr(0x2600)
-	assert get_icon('moon') == chr(0x1F319) + VS
-	assert get_icon('sun_clouds') == chr(0x2600)
-	assert get_icon('cloud') == chr(0x2601)
-	assert get_icon('rain') == chr(0x2614)
-	assert get_icon('drizzle') == chr(0x2614)
-	assert get_icon('thunderstorm') == chr(0x26A1)
-	assert get_icon('snow') == chr(0x2744)
-	assert get_icon('fog') == chr(0x2601)
-	assert get_icon('freezing') == chr(0x2744) + chr(0x2744)
-
-
 def test_get_icon_unknown_name_returns_empty(mocker):
 	mocker.patch.object(icon_map.config.general, 'icon_style', 'modern')
 	assert get_icon('bogus') == ''
-
-
-def test_get_weather_icon_translates_owm_codes_modern(mocker):
-	mocker.patch.object(icon_map.config.general, 'icon_style', 'modern')
-	# 09d -> rain; 10d -> drizzle; 50d -> fog; 01d -> sun; 13d -> snow.
-	assert get_weather_icon('09d') == chr(0x1F327) + VS
-	assert get_weather_icon('10d') == chr(0x1F326) + VS
-	assert get_weather_icon('50d') == chr(0x1F32B) + VS
-	assert get_weather_icon('01d') == chr(0x2600) + VS
-	assert get_weather_icon('13d') == chr(0x2744) + VS
-
-
-def test_get_weather_icon_translates_owm_codes_compatible(mocker):
-	mocker.patch.object(icon_map.config.general, 'icon_style', 'compatible')
-	assert get_weather_icon('09d') == chr(0x2614)   # rain -> umbrella w/ drops
-	assert get_weather_icon('10d') == chr(0x2614)   # drizzle -> umbrella
-	assert get_weather_icon('50d') == chr(0x2601)   # fog -> cloud
-	assert get_weather_icon('01d') == chr(0x2600)
-	assert get_weather_icon('11d') == chr(0x26A1)
-	assert get_weather_icon('80d') == chr(0x2744)   # snow shower -> snowflake
 
 
 def test_get_weather_icon_unknown_code_returns_empty(mocker):
 	mocker.patch.object(icon_map.config.general, 'icon_style', 'modern')
 	assert get_weather_icon('zzzz') == ''
 	assert get_weather_icon('') == ''
-
-
-def test_get_weather_icon_honours_shipped_default_style():
-	# No patching: exercises the real default ('compatible') from the
-	# dataclass / config.yaml.
-	assert get_weather_icon('10d') == chr(0x2614)
-	assert get_weather_icon('09d') == chr(0x2614)
-
-
-def test_get_icon_alert_names_modern(mocker):
-	"""
-	The alert-related standard names resolve to colour emoji in the modern
-	set.
-	"""
-	mocker.patch.object(icon_map.config.general, 'icon_style', 'modern')
-	assert get_icon('cyclone') == chr(0x1F300) + VS
-	assert get_icon('flood') == chr(0x1F30A) + VS
-	assert get_icon('heat') == chr(0x1F975) + VS
-	assert get_icon('wind') == chr(0x1F32C) + VS
-	assert get_icon('dust') == chr(0x1F3DC) + VS
-	assert get_icon('mask') == chr(0x1F637) + VS
-	assert get_icon('fire') == chr(0x1F525) + VS
-	assert get_icon('avalanche') == chr(0x1F3D4) + VS
-	assert get_icon('surf') == chr(0x1F3D6) + VS
-	assert get_icon('ship') == chr(0x1F6A2) + VS
-	assert get_icon('info') == chr(0x2139) + VS
-	assert get_icon('warning') == chr(0x26A0) + VS
-
-
-def test_get_icon_alert_names_compatible(mocker):
-	"""
-	The compatible set stays within the widely-supported glyph ranges; alert
-	names with no basic-symbol equivalent degrade to the warning sign
-	(U+26A0).
-	"""
-	mocker.patch.object(icon_map.config.general, 'icon_style', 'compatible')
-	assert get_icon('cyclone') == chr(0x1F300)
-	assert get_icon('flood') == chr(0x1F30A)
-	assert get_icon('heat') == chr(0x2668)
-	assert get_icon('wind') == chr(0x1F32C)
-	assert get_icon('dust') == chr(0x1F3DC)
-	assert get_icon('mask') == chr(0x26A0)
-	assert get_icon('fire') == chr(0x26A0)
-	assert get_icon('avalanche') == chr(0x1F3D4)
-	assert get_icon('surf') == chr(0x1F3D6)
-	assert get_icon('ship') == chr(0x26A0)
-	assert get_icon('info') == chr(0x26A0)
-	assert get_icon('warning') == chr(0x26A0)

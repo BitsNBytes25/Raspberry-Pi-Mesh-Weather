@@ -40,6 +40,7 @@ from .net import cmd_net
 from .ping import cmd_ping
 from .pres import cmd_pressure
 from .reboot import cmd_reboot
+from .sun import cmd_sun
 from .temp import cmd_temp, get_heat_index
 from .uptime import cmd_uptime
 from .wake import cmd_wake

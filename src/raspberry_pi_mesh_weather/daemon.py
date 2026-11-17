@@ -142,7 +142,7 @@ async def daemon_main(test: bool = False):
 
 	if test:
 		# Get a list of commands to test too
-		cmds = ['all', 'ping', 'uptime', 'cpu', 'temperature', 'pressure', 'humidity', 'forecast', 'alerts', 'net', 'icons', 'wind']
+		cmds = ['all', 'ping', 'uptime', 'cpu', 'temperature', 'pressure', 'humidity', 'forecast', 'alerts', 'net', 'icons', 'wind', 'sun']
 		for cmd in cmds:
 			print('')
 			c = get_command(cmd)

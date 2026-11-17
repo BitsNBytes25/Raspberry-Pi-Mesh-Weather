@@ -205,6 +205,8 @@ def test_get_current_conditions_normalizes(columbus_current, forecast, mocker):
 		'wind_speed': 4.5,
 		'wind_deg': 320,
 		'wind_gust': 9.0,
+		'sunrise': 1794485621,
+		'sunset': 1794521926,
 	}
 
 
@@ -253,6 +255,8 @@ def test_module_accessor_normalizes(columbus_current, reset_shared_client, mocke
 		'wind_speed': 4.5,
 		'wind_deg': 320,
 		'wind_gust': 9.0,
+		'sunrise': 1794485621,
+		'sunset': 1794521926,
 	}
 	assert open_weather_map.requests.get.call_count == 1
 

@@ -18,6 +18,7 @@
 # along with this program.  If not, see <https://gnu.org>.
 
 from .handler import command, CommandResponse, CommandResponseNoData, CommandResponseSuccess
+from raspberry_pi_mesh_weather.libs import sun
 from raspberry_pi_mesh_weather.libs.config import config
 from raspberry_pi_mesh_weather.libs.humidity import get_humidity
 from raspberry_pi_mesh_weather.libs.icon_map import get_icon
@@ -83,6 +84,12 @@ def cmd_all_sensors(target: str | None = None) -> CommandResponse:
 	if wind_speed is not None:
 		compass = f' {wind_compass}' if wind_compass else ''
 		sensors.append(f"wind {wind_speed:.0f} m/s{compass}")
+	# The next sun event only: pre-dawn -> sunrise, daytime -> sunset.  After
+	# today's sunset the OWM current-conditions response carries no future
+	# event, so nothing is appended in the evening.
+	next_sun = sun.get_next_sun_event()
+	if next_sun is not None:
+		sensors.append(f'{next_sun["name"]} {sun.format_time(next_sun["dt"])}')
 
 	if len(sensors) > 0:
 		icon = _weather_icon(temp, humidity, pressure_change)

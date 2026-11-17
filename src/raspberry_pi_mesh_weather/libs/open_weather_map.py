@@ -59,9 +59,10 @@ class OpenWeatherMap:
 		the local sensor is down) do not re-query the service.  A failed fetch is
 		cached as None so a downed network is not re-pounded within the window.
 
-		:return: a dict with keys temp, feels_like, pressure, humidity, dt and the
-			wind block (wind_speed, wind_deg, wind_gust), or None if no data could
-			be obtained.
+		:return: a dict with keys temp, feels_like, pressure, humidity, dt, the
+			wind block (wind_speed, wind_deg, wind_gust) and the sun events
+			(sunrise, sunset, epoch seconds in the location's local time), or
+			None if no data could be obtained.
 		"""
 		now = time.time()
 		if (self._current_cache is not _UNSET
@@ -81,6 +82,7 @@ class OpenWeatherMap:
 		conditions = None
 		if isinstance(data, dict) and isinstance(data.get('main'), dict):
 			wind = data.get('wind') or {}
+			sun = data.get('sys') or {}
 			conditions = {
 				'temp': data['main'].get('temp'),
 				'feels_like': data['main'].get('feels_like'),
@@ -93,6 +95,9 @@ class OpenWeatherMap:
 				'wind_speed': wind.get('speed'),
 				'wind_deg': wind.get('deg'),
 				'wind_gust': wind.get('gust'),
+				# sun events (epoch seconds, local time for the location).
+				'sunrise': sun.get('sunrise'),
+				'sunset': sun.get('sunset'),
 			}
 
 		self._current_cache = conditions

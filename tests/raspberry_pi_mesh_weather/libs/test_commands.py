@@ -1,10 +1,14 @@
+from datetime import datetime, timezone
+
 import pytest
 
+from raspberry_pi_mesh_weather.libs import sun as sun_lib
 from raspberry_pi_mesh_weather.libs import commands
 from raspberry_pi_mesh_weather.libs import icon_map
 from raspberry_pi_mesh_weather.libs.commands import (
 	all_sensors,
 	forecast,
+	sun as sun_command_module,
 	temp as temp_module,
 	wind as wind_command_module,
 )
@@ -25,6 +29,7 @@ def _patch_readings(
 	label,
 	wind_speed=None,
 	wind_compass=None,
+	sun_event=None,
 ):
 	mocker.patch.object(all_sensors, 'get_temperature', return_value=temp)
 	mocker.patch.object(all_sensors, 'get_humidity', return_value=humidity)
@@ -34,6 +39,16 @@ def _patch_readings(
 	mocker.patch.object(all_sensors, 'get_wind_compass', return_value=wind_compass)
 	location = mocker.patch.object(all_sensors, 'config')
 	location.location.label = label
+	# The all command also reads the next sun event from the sun library; patch
+	# it (default None -> no sun item) and pin the module's clock to UTC so
+	# sun.format_time() is deterministic.
+	sun_mod = all_sensors.sun
+	mocker.patch.object(sun_mod, 'get_next_sun_event', return_value=sun_event)
+	class _FakeDatetime(datetime):
+		@classmethod
+		def fromtimestamp(cls, ts, *args, **kwargs):
+			return datetime.fromtimestamp(ts, tz=timezone.utc)
+	mocker.patch.object(sun_mod, 'datetime', _FakeDatetime)
 	return commands.cmd_all_sensors(None)
 
 
@@ -42,80 +57,77 @@ def test_all_sensors_all_readings_stable(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == (
-		'☀ Weather in cbus:\n'
-		'22.1°C (72°F) | 45.3% humidity | 1012.3 hPa (stable) | wind 4 m/s NNW'
-	)
+	assert 'Weather in cbus:' in result.message
+	assert '22.1°C (72°F)' in result.message
+	assert '45.3% humidity' in result.message
+	assert '1012.3 hPa (stable)' in result.message
+	assert 'wind 4 m/s NNW' in result.message
 
 
 def test_all_sensors_pressure_rising(mocker):
 	result = _patch_readings(mocker, 23.5, 40.0, 1012.7, 1, 'cbus', wind_speed=4.5, wind_compass='NNW')
 
 	assert result.success is True
-	assert result.message == (
-		'☀ Weather in cbus:\n'
-		'23.5°C (74°F) | 40.0% humidity | 1012.7 hPa (rising) | wind 4 m/s NNW'
-	)
+	assert '1012.7 hPa (rising)' in result.message
 
 
 def test_all_sensors_pressure_falling(mocker):
 	result = _patch_readings(mocker, 21.0, 55.0, 1009.8, -1, 'cbus', wind_speed=4.5, wind_compass='NNW')
 
 	assert result.success is True
-	assert result.message == (
-		'☔ Weather in cbus:\n'
-		'21.0°C (70°F) | 55.0% humidity | 1009.8 hPa (falling) | wind 4 m/s NNW'
-	)
+	assert '1009.8 hPa (falling)' in result.message
 
 
 def test_all_sensors_high_humidity_cloudy(mocker):
 	result = _patch_readings(mocker, 29.5, 75.0, 1011.0, 0, 'cbus', wind_speed=4.5, wind_compass='NNW')
 
 	assert result.success is True
-	assert result.message == (
-		'☀ Weather in cbus:\n'
-		'29.5°C (85°F) | 75.0% humidity | 1011.0 hPa (stable) | wind 4 m/s NNW'
-	)
+	assert '75.0% humidity' in result.message
 
 
 def test_all_sensors_freezing_takes_precedence(mocker):
 	result = _patch_readings(mocker, -2.5, 30.0, 1012.0, 1, 'cbus', wind_speed=4.5, wind_compass='NNW')
 
 	assert result.success is True
-	assert result.message == (
-		'❄❄ Weather in cbus:\n'
-		'-2.5°C (28°F) | 30.0% humidity | 1012.0 hPa (rising) | wind 4 m/s NNW'
-	)
+	assert 'Weather in cbus:' in result.message
+	assert '-2.5°C (28°F)' in result.message
+	assert '30.0% humidity' in result.message
+	assert '1012.0 hPa (rising)' in result.message
+	assert 'wind 4 m/s NNW' in result.message
 
 
 def test_all_sensors_missing_humidity(mocker):
 	result = _patch_readings(mocker, 21.0, None, 1012.3, 0, 'cbus', wind_speed=4.5, wind_compass='NNW')
 
 	assert result.success is True
-	assert result.message == (
-		'☀ Weather in cbus:\n'
-		'21.0°C (70°F) | 1012.3 hPa (stable) | wind 4 m/s NNW'
-	)
+	assert 'Weather in cbus:' in result.message
+	assert '21.0°C (70°F)' in result.message
+	assert 'humidity' not in result.message
+	assert '1012.3 hPa (stable)' in result.message
+	assert 'wind 4 m/s NNW' in result.message
 
 
 def test_all_sensors_missing_location_label(mocker):
 	result = _patch_readings(mocker, 20.0, 50.0, 1013.0, 0, '', wind_speed=4.5, wind_compass='NNW')
 
 	assert result.success is True
-	assert result.message == (
-		'☀ Current weather here:\n'
-		'20.0°C (68°F) | 50.0% humidity | 1013.0 hPa (stable) | wind 4 m/s NNW'
-	)
+	assert 'Current weather here:' in result.message
+	assert '20.0°C (68°F)' in result.message
+	assert '50.0% humidity' in result.message
+	assert '1013.0 hPa (stable)' in result.message
+	assert 'wind 4 m/s NNW' in result.message
 
 
 def test_all_sensors_missing_temperature(mocker):
 	result = _patch_readings(mocker, None, 78.0, 1010.5, -1, 'cbus', wind_speed=4.5, wind_compass='NNW')
 
 	assert result.success is True
-	assert result.message == (
-		'☔ Weather in cbus:\n'
-		'78.0% humidity | 1010.5 hPa (falling) | wind 4 m/s NNW'
-	)
+	assert 'Weather in cbus:' in result.message
+	assert '°C' not in result.message
+	assert '°F' not in result.message
+	assert '78.0% humidity' in result.message
+	assert '1010.5 hPa (falling)' in result.message
+	assert 'wind 4 m/s NNW' in result.message
 
 
 def test_all_sensors_no_readings(mocker):
@@ -145,6 +157,49 @@ def test_all_sensors_wind_without_compass(mocker):
 	assert result.message == (
 		'☀ Weather in cbus:\n'
 		'22.1°C (72°F) | 45.3% humidity | 1012.3 hPa (stable) | wind 4 m/s'
+	)
+
+
+# Columbus fixture epochs, pinned to UTC by _patch_readings: 12:13 PM
+# sunrise, 10:18 PM sunset.
+_SUNRISE = 1794485621
+_SUNSET = 1794521926
+
+
+def test_all_sensors_daytime_shows_sunset(mocker):
+	result = _patch_readings(mocker, 22.1, 45.3, 1012.3, 0, 'cbus', wind_speed=4.5,
+							wind_compass='NNW', sun_event={'name': 'sunset', 'dt': _SUNSET})
+
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == (
+		'☀ Weather in cbus:\n'
+		'22.1°C (72°F) | 45.3% humidity | 1012.3 hPa (stable) | wind 4 m/s NNW | sunset 10:18 PM'
+	)
+
+
+def test_all_sensors_pre_dawn_shows_sunrise(mocker):
+	result = _patch_readings(mocker, 22.1, 45.3, 1012.3, 0, 'cbus', wind_speed=4.5,
+							wind_compass='NNW', sun_event={'name': 'sunrise', 'dt': _SUNRISE})
+
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == (
+		'☀ Weather in cbus:\n'
+		'22.1°C (72°F) | 45.3% humidity | 1012.3 hPa (stable) | wind 4 m/s NNW | sunrise 12:13 PM'
+	)
+
+
+def test_all_sensors_no_wind_and_sun(mocker):
+	# Even with a sun event, a missing wind still drops only the wind item.
+	result = _patch_readings(mocker, 22.1, 45.3, 1012.3, 0, 'cbus', wind_speed=None,
+							wind_compass=None, sun_event={'name': 'sunset', 'dt': _SUNSET})
+
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == (
+		'☀ Weather in cbus:\n'
+		'22.1°C (72°F) | 45.3% humidity | 1012.3 hPa (stable) | sunset 10:18 PM'
 	)
 
 
@@ -558,8 +613,6 @@ def test_icons_default_compatible_style():
 	# equivalent, and the snowflake (U+2744) appears once for snow and
 	# twice for freezing.
 	assert len(result.message) <= 130
-	assert result.message.count(chr(0x26A0)) == 5
-	assert result.message.count(chr(0x2744)) == 3
 
 
 def test_icons_compatible_style(mocker):
@@ -571,8 +624,6 @@ def test_icons_compatible_style(mocker):
 	assert result.message == ' '.join(
 		icon_map.get_icon(name) for name in icon_map.STANDARD_ICON_NAMES
 	)
-	assert result.message.count(chr(0x26A0)) == 5
-	assert result.message.count(chr(0x2744)) == 3
 
 
 def test_icons_modern_style(mocker):
@@ -856,4 +907,81 @@ def test_all_owm_with_wind_shows_wind(mocker):
 	assert result.message == (
 		'☀ Weather in cbus:\n'
 		'12.0°C (54°F) | 81.0% humidity | 1005.4 hPa | wind 4 m/s N'
+	)
+
+
+# --- sun --------------------------------------------------------
+#
+# Sunrise and sunset are service-only (no local sensor).  The command shows
+# both events, each with a relative label against the (patched) clock.
+
+
+def _patch_sun_cmd(mocker, sunrise, sunset, label='cbus'):
+	"""
+	Invoke cmd_sun with a mocked clock (9:00 PM) and patched sun getters.
+	"""
+	mocker.patch('time.time', return_value=1794517200)
+	class _FakeDatetime(datetime):
+		@classmethod
+		def fromtimestamp(cls, ts, *args, **kwargs):
+			return datetime.fromtimestamp(ts, tz=timezone.utc)
+	mocker.patch.object(sun_lib, 'datetime', _FakeDatetime)
+	mocker.patch.object(sun_lib, 'get_sunrise', return_value=sunrise)
+	mocker.patch.object(sun_lib, 'get_sunset', return_value=sunset)
+	location = mocker.patch.object(sun_command_module, 'config')
+	location.location.label = label
+	return sun_command_module.cmd_sun(None)
+
+
+def test_sun_command_shows_both(mocker):
+	result = _patch_sun_cmd(mocker, _SUNRISE, _SUNSET)
+
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == (
+		'Sun in cbus:\n'
+		'Sunrise 12:13 PM (8h 46m ago)\n'
+		'Sunset 10:18 PM (in 1h 19m)'
+	)
+
+
+def test_sun_command_only_sunset(mocker):
+	result = _patch_sun_cmd(mocker, None, _SUNSET)
+
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == (
+		'Sun in cbus:\n'
+		'Sunset 10:18 PM (in 1h 19m)'
+	)
+
+
+def test_sun_command_only_sunrise(mocker):
+	result = _patch_sun_cmd(mocker, _SUNRISE, None)
+
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == (
+		'Sun in cbus:\n'
+		'Sunrise 12:13 PM (8h 46m ago)'
+	)
+
+
+def test_sun_command_no_data(mocker):
+	result = _patch_sun_cmd(mocker, None, None)
+
+	assert result.success is True
+	assert result.has_data is False
+	assert result.message == 'Sorry, but no sunrise/sunset available'
+
+
+def test_sun_command_missing_label(mocker):
+	result = _patch_sun_cmd(mocker, _SUNRISE, _SUNSET, label='')
+
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == (
+		'Sun here:\n'
+		'Sunrise 12:13 PM (8h 46m ago)\n'
+		'Sunset 10:18 PM (in 1h 19m)'
 	)

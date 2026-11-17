@@ -19,6 +19,7 @@ OpenWeatherMap-specific convenience bridge used by the forecast client."""
 from .config import config
 
 VS = '\uFE0F'  # Variation selector, forces colour emoji presentation in the modern set
+# This variation differs from \uFE0E that tells the system to treat the icon as text
 
 # Authoritative, ordered list of standard icon names.  Order is meaningful
 # and reused directly by consumers (e.g. the `icons` diagnostic command) so the
@@ -112,7 +113,7 @@ WEATHER_ICONS_MODERN = {
 # - https://github.com/ALLFATHER-BV/wadamesh
 WEATHER_ICONS_COMPATIBLE = {
 	'sun': '☀',           # U+2600 (Black Sun with Rays - worked in your compatible set)
-	'moon': '🌙️',         # Simple text character (replaces failing crescent ☾)
+	'moon': '🌙',         # Simple text character (replaces failing crescent ☾)
 	'sun_clouds': '☀',    # Combined text/symbol representation
 	'cloud': '☁',         # U+2601 (Cloud - worked)
 	'rain': '☔',          # U+2614 (Umbrella with Rain Drops - worked in compatible)
