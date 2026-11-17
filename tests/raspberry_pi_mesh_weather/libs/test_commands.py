@@ -231,7 +231,7 @@ def test_temp_freezing(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == "🥶 FREEZING! It's -3°C (26°F) - Just stay home and get some hot chocolate!"
+	assert result.message == f"{icon_map.get_icon('freezing')} FREEZING! It's -3°C (26°F) - Just stay home and get some hot chocolate!"
 
 
 def test_temp_cold_bundle_up(mocker):
@@ -239,7 +239,7 @@ def test_temp_cold_bundle_up(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == "🧊 It's currently 5°C (41°F) - Stay inside or bundle up!"
+	assert result.message == f"{icon_map.get_icon('snow')} It's currently 5°C (41°F) - Stay inside or bundle up!"
 
 
 def test_temp_chilly_damp(mocker):
@@ -247,7 +247,7 @@ def test_temp_chilly_damp(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == "☔ Damp and chilly, it's currently 12°C (54°F). Grab a waterproof coat."
+	assert result.message == f"{icon_map.get_icon('rain')} Damp and chilly, it's currently 12°C (54°F). Grab a waterproof coat."
 
 
 def test_temp_chilly_falling_pressure(mocker):
@@ -255,7 +255,7 @@ def test_temp_chilly_falling_pressure(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == "☁️ A bit chilly at 12°C (54°F) and rain may be on the horizon."
+	assert result.message == f"{icon_map.get_icon('cloud')} A bit chilly at 12°C (54°F) and rain may be on the horizon."
 
 
 def test_temp_chilly_rising_pressure(mocker):
@@ -263,7 +263,7 @@ def test_temp_chilly_rising_pressure(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == "☀️ A bit chilly at 12°C (54°F) but should be sunny."
+	assert result.message == f"{icon_map.get_icon('sun')} A bit chilly at 12°C (54°F) but should be sunny."
 
 
 def test_temp_chilly_stable(mocker):
@@ -279,7 +279,7 @@ def test_temp_comfortable_stable(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == "☀️ Perfectly comfortable at 22°C (72°F).  Go out for a nice walk."
+	assert result.message == f"{icon_map.get_icon('sun')} Perfectly comfortable at 22°C (72°F).  Go out for a nice walk."
 
 
 def test_temp_comfortable_stable_sticky(mocker):
@@ -287,7 +287,7 @@ def test_temp_comfortable_stable_sticky(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == "☁️ It's a comfortable 22°C (72°F) but is rather sticky."
+	assert result.message == f"{icon_map.get_icon('cloud')} It's a comfortable 22°C (72°F) but is rather sticky."
 
 
 def test_temp_comfortable_stable_dry(mocker):
@@ -295,7 +295,7 @@ def test_temp_comfortable_stable_dry(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == "☀️ Perfectly comfortable and dry at 22°C (72°F).  Go out for a nice walk."
+	assert result.message == f"{icon_map.get_icon('sun')} Perfectly comfortable and dry at 22°C (72°F).  Go out for a nice walk."
 
 
 def test_temp_comfortable_falling_storm(mocker):
@@ -303,7 +303,7 @@ def test_temp_comfortable_falling_storm(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == "☁️ Perfectly comfortable at 22°C (72°F) but it may storm soon."
+	assert result.message == f"{icon_map.get_icon('cloud')} Perfectly comfortable at 22°C (72°F) but it may storm soon."
 
 
 def test_temp_comfortable_falling_wet(mocker):
@@ -311,7 +311,7 @@ def test_temp_comfortable_falling_wet(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == "☔ It's a comfortable 22°C (72°F) but is rather wet out there."
+	assert result.message == f"{icon_map.get_icon('rain')} It's a comfortable 22°C (72°F) but is rather wet out there."
 
 
 def test_temp_comfortable_falling_dry(mocker):
@@ -319,7 +319,7 @@ def test_temp_comfortable_falling_dry(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == "☁️ Comfortable and dry at 22°C (72°F) but it may storm soon."
+	assert result.message == f"{icon_map.get_icon('cloud')} Comfortable and dry at 22°C (72°F) but it may storm soon."
 
 
 def test_temp_comfortable_no_pressure_change(mocker):
@@ -335,7 +335,7 @@ def test_temp_warm_sunny(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == "☀️ Warm and sunny at 26°C (79°F). Enjoy the heat!"
+	assert result.message == f"{icon_map.get_icon('sun')} Warm and sunny at 26°C (79°F). Enjoy the heat!"
 
 
 def test_temp_warm_muggy(mocker):
@@ -343,7 +343,7 @@ def test_temp_warm_muggy(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == "☁️ Warm and muggy at 25°C (77°F).  It feels a bit like 25°C (77°F)."
+	assert result.message == f"{icon_map.get_icon('cloud')} Warm and muggy at 25°C (77°F).  It feels a bit like 25°C (77°F)."
 
 
 def test_temp_warm_muggy_severe(mocker):
@@ -351,7 +351,7 @@ def test_temp_warm_muggy_severe(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == "🥵 It's a hot and muggy 29°C (84°F) but feels like 37°C (99°F).  Take water & limit activity."
+	assert result.message == f"{icon_map.get_icon('heat')} It's a hot and muggy 29°C (84°F) but feels like 37°C (99°F).  Take water & limit activity."
 
 
 def test_temp_warm_falling_pressure_storm(mocker):
@@ -359,7 +359,7 @@ def test_temp_warm_falling_pressure_storm(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == "☔ It's a hot and muggy 26°C (79°F) and feels like 26°C (79°F).  Expect storms soon."
+	assert result.message == f"{icon_map.get_icon('rain')} It's a hot and muggy 26°C (79°F) and feels like 26°C (79°F).  Expect storms soon."
 
 
 def test_temp_oppressive_heat(mocker):
@@ -367,7 +367,7 @@ def test_temp_oppressive_heat(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == "🔥 It's an oppressive 35°C (95°F) & feels like 53°C (127°F). STAY SAFE AND HYDRATED!"
+	assert result.message == f"{icon_map.get_icon('fire')} It's an oppressive 35°C (95°F) & feels like 53°C (127°F). STAY SAFE AND HYDRATED!"
 
 
 def test_temp_hot_low_humidity(mocker):
@@ -375,7 +375,7 @@ def test_temp_hot_low_humidity(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == "☀️ Hot and sunny at 33°C (91°F) but very low humidity.  Enjoy the heat!"
+	assert result.message == f"{icon_map.get_icon('sun')} Hot and sunny at 33°C (91°F) but very low humidity.  Enjoy the heat!"
 
 
 def test_temp_hot_storm(mocker):
@@ -383,7 +383,7 @@ def test_temp_hot_storm(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == "☀️ Hot and sunny at 31°C (88°F) right now, but enjoy it while it lasts.  Storms may be on the horizon."
+	assert result.message == f"{icon_map.get_icon('sun')} Hot and sunny at 31°C (88°F) right now, but enjoy it while it lasts.  Storms may be on the horizon."
 
 
 def test_temp_hot_sunny(mocker):
@@ -391,7 +391,7 @@ def test_temp_hot_sunny(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == "☀️ Hot and sunny at 31°C (88°F). Enjoy the heat!"
+	assert result.message == f"{icon_map.get_icon('sun')} Hot and sunny at 31°C (88°F). Enjoy the heat!"
 
 
 def test_heat_index_below_threshold_returns_temp():
@@ -736,7 +736,7 @@ def test_temp_uses_owm_when_sensor_down(mocker):
 
 	assert result.success is True
 	assert result.has_data is True
-	assert result.message == "☔ Damp and chilly, it's currently 12°C (54°F). Grab a waterproof coat."
+	assert result.message == f"{icon_map.get_icon('rain')} Damp and chilly, it's currently 12°C (54°F). Grab a waterproof coat."
 
 
 def test_pressure_uses_owm_when_sensor_down(mocker):
