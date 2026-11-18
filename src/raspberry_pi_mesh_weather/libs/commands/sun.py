@@ -42,11 +42,12 @@ def _relative_label(ts: float, now: float) -> str:
 @command('sun', direct=True, group=True)
 def cmd_sun(target: str | None = None) -> CommandResponse:
 	"""
-	Report today's sunrise and sunset, each with a relative label showing how
-	far the event is from now.
-
-	Sunrise and sunset come from the OpenWeatherMap service (there is no local
-	sensor for them), so this is always service-derived.
+	Report today's sunrise and sunset times.
+	What time is sunrise
+	What time is sunset
+	Sunset time
+	When does the sun rise
+	When will it go dark
 	"""
 	now = time.time()
 	sunrise = sun.get_sunrise()

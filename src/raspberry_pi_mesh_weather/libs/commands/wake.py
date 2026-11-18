@@ -25,6 +25,11 @@ from raspberry_pi_mesh_weather.libs.system_state import state
 
 @command('wake', direct=True, auth=True)
 def cmd_wake(target: str | None = None):
-	# Instruct the radio to wake up its display
+	"""
+	Briefly wake the device's display.
+	Turn on the screen
+	Wake the display
+	Light up the screen
+	"""
 	state.set('wake', time.time())
 	return CommandResponseSuccess('Device display should wake up shortly.')

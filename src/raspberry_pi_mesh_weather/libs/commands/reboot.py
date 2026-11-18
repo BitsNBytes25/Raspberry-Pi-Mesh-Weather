@@ -26,7 +26,9 @@ from raspberry_pi_mesh_weather.libs.system_state import state
 @command('reboot', direct=True, auth=True)
 def cmd_reboot(target: str | None = None):
 	"""
-	Instruct the raspberry pi to reboot.
+	Restart the device.
+	Restart the pi
+	Reboot the device
 	"""
 	state.set('reboot', time.time())
 	return CommandResponseSuccess('Reboot scheduled')

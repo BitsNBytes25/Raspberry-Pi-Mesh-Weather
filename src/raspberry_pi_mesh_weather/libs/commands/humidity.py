@@ -23,6 +23,13 @@ from raspberry_pi_mesh_weather.libs.humidity import get_humidity
 
 @command('humidity', direct=True, group=True, alias='humid')
 def cmd_humidity(target: str | None = None) -> CommandResponse:
+	"""
+	Report the current humidity.
+	What is the humidity
+	How humid is it
+	Humidity outside
+	What is the moisture level
+	"""
 	humidity = get_humidity()
 	if humidity is None:
 		return CommandResponseNoData('Sorry, but no humidity available')

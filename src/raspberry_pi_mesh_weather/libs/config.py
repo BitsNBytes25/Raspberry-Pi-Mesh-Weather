@@ -25,6 +25,32 @@ class RadioConfig:
 	interface: str = 'serial'
 	port: str = '/dev/ttyUSB0'
 	baud_rate: int = 115200
+	# Public-key prefix used by the CLI radio (`radio.type: "cli"`) as the
+	# sender for un-targeted direct messages.  When left empty, the CLI radio
+	# falls back to the first entry of `auth_radios` so authorized commands
+	# work by default.
+	target: str = ''
+
+
+@dataclass
+class AiConfig:
+	# Optional in-process command resolver: a small sentence-transformer model
+	# classifies unrecognized direct messages into a known command.  Exact
+	# command/alias matches are always tried first and win; the model is only
+	# consulted when those fail, and it can only pick from the existing command
+	# catalog, with replies still produced by the normal commands.  Disabled
+	# by default.
+	#
+	# Anchors are the command functions' docstrings (one phrasing per line);
+	# their embeddings are generated once at daemon startup.
+	enabled: bool = False
+	# Hugging Face model ID (auto-downloaded on first load, or cached if already
+	# present) or an absolute path to a local directory containing the model
+	# files (for offline Pis).
+	model_path: str = 'sentence-transformers/all-MiniLM-L6-v2'
+	# Minimum cosine similarity between a message embedding and a command's
+	# anchors for it to be considered a match (0.0-1.0; higher is stricter).
+	threshold: float = 0.55
 
 
 @dataclass
@@ -89,6 +115,7 @@ class Config:
 	radio: RadioConfig
 	sensors: list[SensorConfig]
 	location: LocationConfig
+	ai: AiConfig
 	weather: WeatherConfig
 	general: GeneralConfig
 	home_assistant: HomeAssistantConfig
@@ -117,6 +144,7 @@ class Config:
 			radio=RadioConfig(**raw_data['radio']),
 			sensors=sensors,
 			location=LocationConfig(**raw_data['location']),
+			ai=AiConfig(**raw_data.get('ai', {})),
 			weather=WeatherConfig(**raw_data['weather']),
 			general=GeneralConfig(**raw_data.get('general', {})),
 			home_assistant=HomeAssistantConfig(**raw_data['home_assistant']),

@@ -24,6 +24,7 @@ import logging
 
 from raspberry_pi_mesh_weather.libs.commands import get_command
 from raspberry_pi_mesh_weather.libs.config import config
+from raspberry_pi_mesh_weather.services.service import ShutdownRequested
 
 
 async def daemon_main(test: bool = False):
@@ -87,8 +88,37 @@ async def daemon_main(test: bool = False):
 		else:
 			logging.error('%s could not be loaded!', radio.get_name())
 			radio = None
+	elif config.radio.type == 'cli':
+		from raspberry_pi_mesh_weather.services.radios.cli_radio import CliRadio
+		radio = CliRadio()
+		logging.debug('Loading %s', radio.get_name())
+		loadable = await radio.load()
+		if loadable:
+			radio_loaded = True
+			if test:
+				await radio.test()
+			else:
+				services.append(radio)
+				tasks.append(radio.start())
+		else:
+			logging.error('%s could not be loaded!', radio.get_name())
+			radio = None
 	else:
 		logging.error('Unsupported radio type requested')
+
+	# Load the AI command resolver if requested (opt-in; an in-process
+	# sentence transformer for natural-language direct-message resolution)
+	if config.ai.enabled:
+		from raspberry_pi_mesh_weather.services.ai import AiService, set_ai_service
+		ai = AiService()
+		logging.debug('Loading %s', ai.get_name())
+		loadable = await ai.load()
+		if loadable:
+			set_ai_service(ai)
+			services.append(ai)
+			tasks.append(ai.start())
+		else:
+			logging.error('AI command resolver could not be loaded; natural-language direct messages will require exact command matches')
 
 	# Load the shared scheduled tasks service (currently runs the morning and
 	# evening forecast broadcast, which is radio-independent once the radio
@@ -169,6 +199,8 @@ async def daemon_main(test: bool = False):
 		await asyncio.gather(*tasks)
 	except KeyboardInterrupt:
 		logging.info('Keyboard interrupt received. Exiting...')
+	except ShutdownRequested:
+		logging.info('Shutdown requested. Exiting...')
 	except asyncio.CancelledError:
 		logging.info('Shutdown signal received, exiting...')
 	except Exception as e:

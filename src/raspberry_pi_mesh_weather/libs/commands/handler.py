@@ -18,6 +18,8 @@
 # along with this program.  If not, see <https://gnu.org>.
 
 import functools
+import inspect
+import logging
 from typing import Callable
 
 from raspberry_pi_mesh_weather.libs.config import config
@@ -139,3 +141,76 @@ def get_command(cmd: str) -> Callable[[str | None], CommandResponse] | None:
 			return _direct_commands[cmd]
 		else:
 			return None
+
+
+def command_catalog():
+	"""
+	Catalog of the direct commands for the AI command resolver.
+
+	Each entry is a dict with:
+	  - 'name': the command's registered name
+	  - 'aliases': the command's registered aliases
+	  - 'anchors': the non-empty lines of the command function's docstring,
+	    i.e. the phrasings the AI resolver compares incoming messages against.
+	    A command without a docstring falls back to name and aliases only.
+
+	Anchors are derived from the command functions' docstrings (one phrasing
+	per line) at call time, so a new command's docstring automatically
+	provides its resolver anchors.
+	"""
+	catalog = []
+	for name, wrapper in _direct_commands.items():
+		aliases = [a for a, n in _aliases.items() if n == name]
+		doc = inspect.getdoc(wrapper)
+		anchors = [line.strip() for line in (doc.splitlines() if doc else []) if line.strip()]
+		if not anchors:
+			logging.warning('command %r has no docstring; AI resolution will fall back to name/alias only', name)
+			anchors = [name]
+		for alias in aliases:
+			if alias not in anchors:
+				anchors.append(alias)
+		catalog.append({'name': name, 'aliases': aliases, 'anchors': anchors})
+	return catalog
+
+
+def resolve_message(text: str) -> Callable[[str | None], CommandResponse] | None:
+	"""
+	Resolve direct message text into an executable command.
+
+	An exact command name / alias match always wins. Only if that fails is
+	the AI command resolver consulted (in-process sentence transformer, opt-in);
+	it can only select from the existing command catalog.
+
+	Note: this performs a blocking model call when the AI is consulted, so
+	call it from a worker thread / task (see `AiService.resolve_async` and
+	the radio handlers).
+
+	:param text: raw direct message text (radios pass it lower-cased already)
+	:return: the command callable to invoke, or None if it cannot be resolved
+	"""
+	cmd = get_command(text)
+	if cmd is not None:
+		return cmd
+	ai_cmd = _ai_resolve(text)
+	return get_command(ai_cmd) if ai_cmd else None
+
+
+def _ai_resolve(text: str):
+	"""
+	Ask the local AI model which command matches `text`.
+
+	Only consulted after exact/alias resolution has failed.
+
+	:return: a command name or alias, or None when the AI is disabled or
+		unavailable
+	"""
+	try:
+		# Lazy import to avoid a circular dependency between libs.commands
+		# and services (services/ai.py imports the handler at module level).
+		from raspberry_pi_mesh_weather.services.ai import get_ai_service
+	except ImportError:
+		return None
+	ai = get_ai_service()
+	if ai is None:
+		return None
+	return ai.resolve(text)

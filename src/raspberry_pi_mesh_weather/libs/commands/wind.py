@@ -24,9 +24,11 @@ from raspberry_pi_mesh_weather.libs.wind import get_wind_compass, get_wind_gust,
 @command('wind', direct=True, group=True)
 def cmd_wind(target: str | None = None) -> CommandResponse:
 	"""
-	Report the current wind from the OpenWeatherMap service.
-
-	No local wind sensor is attached, so this is always service-derived.
+	Report the current wind speed, gust and direction.
+	What is the wind
+	How windy is it
+	Wind speed
+	What is the wind direction
 	"""
 	wind_speed = get_wind_speed()
 	if wind_speed is None:

@@ -23,6 +23,13 @@ from raspberry_pi_mesh_weather.libs.pressure import get_pressure, get_pressure_c
 
 @command('pressure', direct=True, group=True, alias='pres')
 def cmd_pressure(target: str | None = None) -> CommandResponse:
+	"""
+	Report the current barometric pressure and its trend.
+	What is the pressure
+	Is the pressure rising
+	What is the barometric pressure
+	Barometric pressure
+	"""
 	pressure = get_pressure()
 	pressure_change = get_pressure_change()
 

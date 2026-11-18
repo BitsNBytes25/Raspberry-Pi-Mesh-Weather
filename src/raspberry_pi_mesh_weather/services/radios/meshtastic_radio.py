@@ -9,7 +9,7 @@ from meshtastic.serial_interface import SerialInterface
 from pubsub import pub
 
 from raspberry_pi_mesh_weather.auth.mqtt_auth_simple import MqttAuthSimple
-from raspberry_pi_mesh_weather.libs.commands import get_command
+from raspberry_pi_mesh_weather.libs.commands import resolve_message
 from raspberry_pi_mesh_weather.libs.config import config
 from raspberry_pi_mesh_weather.libs.mesh_contacts import MeshContact, store_contact
 from raspberry_pi_mesh_weather.libs.mqtt import MqttRunner
@@ -61,7 +61,7 @@ class MeshtasticRadio(Service):
 
 		text = packet.get("decoded", {}).get("text", "").lower()
 
-		cmd = get_command(text)
+		cmd = resolve_message(text)
 		if cmd is None:
 			if direct:
 				message = 'Sorry, I don\'t understand that command.  Try "help" for a list of commands.'

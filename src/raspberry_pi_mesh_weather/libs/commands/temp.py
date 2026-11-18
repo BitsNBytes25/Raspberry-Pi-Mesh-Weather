@@ -45,6 +45,15 @@ def get_heat_index(temp_c, humidity):
 
 @command('temperature', direct=True, group=True, alias='temp')
 def cmd_temp(target: str | None = None) -> CommandResponse:
+	"""
+	Report the current outdoor temperature and comfort level.
+	What is the temperature
+	What's the temp
+	How hot is it
+	How cold is it
+	Temp outside
+	Is it hot outside
+	"""
 	temp = get_temperature()
 	humidity = get_humidity()
 

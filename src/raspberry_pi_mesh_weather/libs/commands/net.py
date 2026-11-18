@@ -25,8 +25,12 @@ from raspberry_pi_mesh_weather.libs.get_local_ip import get_local_ip
 @command('net', direct=True, auth=True)
 def cmd_net(target: str | None = None):
 	"""
-	Get the net stats for the raspberry pi.
-	:return:
+	Report the device's network details: local IP, SSID, signal bars,
+	link rate and frequency.
+	What is the network configuration
+	Network details
+	Wi-Fi stats
+	What is the local IP
 	"""
 	ip = get_local_ip()
 	ssid = get_ssid()

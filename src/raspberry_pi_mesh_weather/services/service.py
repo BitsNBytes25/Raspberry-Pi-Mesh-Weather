@@ -1,6 +1,17 @@
 import asyncio
 
 
+class ShutdownRequested(Exception):
+    """
+    Raised by a service (currently the CLI radio) when it wants the whole
+    daemon to shut down.  It is a plain ``Exception`` (not a ``BaseException``)
+    so that ``asyncio.gather`` propagates it to the daemon's handler without
+    re-raising into the event loop thread (which ``KeyboardInterrupt`` and
+    ``SystemExit`` would do).
+    """
+    pass
+
+
 class Service:
 	def __init__(self):
 		self.task = None

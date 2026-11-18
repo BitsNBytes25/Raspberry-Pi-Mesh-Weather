@@ -24,7 +24,9 @@ from .handler import (
 	CommandResponseNoData,
 	CommandResponseSuccess,
 	command,
+	command_catalog,
 	get_command,
+	resolve_message,
 )
 
 # Individual commands.  Importing each module registers its command(s)

@@ -50,8 +50,26 @@ for SENSOR in $(yq -r '(.sensors // [])[].type' "$CONFIG"); do
 	UVCMD+=(--group sensor-$SENSOR)
 done
 
+if [ "$(yq -r '.ai.enabled // false' "$CONFIG")" == "true" ]; then
+	echo "Enabling dependencies for AI command resolver (sentence-transformers)"
+	UVCMD+=(--group ai)
+fi
+
 echo "Installing all Python dependencies"
 "${UVCMD[@]}"
+
+# --- Optional: AI command resolver (sentence-transformers) ---------------
+#
+# The AI dependency group is added to UVCMD above when ai.enabled is true.
+# The model (default: sentence-transformers/all-MiniLM-L6-v2) is downloaded
+# to the local Hugging Face cache on first daemon load when online.  For an
+# offline Pi, point ai.model_path at a local directory containing the model
+# files, e.g.:
+#
+#   huggingface-cli download sentence-transformers/all-MiniLM-L6-v2 --local-dir /path/to/model
+if [ "$(yq -r '.ai.enabled // false' "$CONFIG")" == "true" ]; then
+	echo "AI command resolver enabled; the model will be downloaded on first run (if online)"
+fi
 
 echo "🛠️ Creating systemd service files..."
 
