@@ -18,9 +18,12 @@
 # along with this program.  If not, see <https://gnu.org>.
 
 import asyncio
+import logging
 from datetime import datetime
 
 from raspberry_pi_mesh_weather.libs.commands import get_command
+from raspberry_pi_mesh_weather.libs.config import config
+from raspberry_pi_mesh_weather.libs.weather_alerts import get_new_alerts
 from raspberry_pi_mesh_weather.services.service import Service
 
 
@@ -108,17 +111,24 @@ class ScheduledTasks(Service):
 			# Last alert check was recent, do not hammer the API
 			return False
 
-		cmd = get_command('!alerts')
-		if cmd is None:
+		lat = config.location.lat
+		lon = config.location.lon
+		if lat is None or lon is None:
 			return False
 
-		result = cmd(None)
-		if result.success and result.has_data:
-			# Command successfully completed, send the broadcast and make a log of when it was sent
-			await self.sender.broadcast(result.message)
-			self._last_alert = self._current_timestamp
-			return True
-		return False
+		logging.debug('--- Running Scheduled Alerts Fetch ---')
+		new_alerts = get_new_alerts(lat, lon)
+		if not new_alerts:
+			# No new alerts for this region
+			return False
+
+		# Only ever-unseen tracked alerts: dedup lives in weather_alerts.
+		alerts = '\n'.join(f"{alert['icon']}  {alert['title']}" for alert in new_alerts)
+
+		# Command successfully completed, send the broadcast and make a log of when it was sent
+		await self.sender.broadcast(alerts)
+		self._last_alert = self._current_timestamp
+		return True
 
 	async def load(self) -> bool:
 		# The sender (radio) is already loaded by the caller; nothing else to init.

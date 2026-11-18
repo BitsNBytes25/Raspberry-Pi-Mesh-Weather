@@ -17,6 +17,10 @@ to rebuild the dependencies for any changed feature.
 ### Environmental Sensor Tracking
 
 Pulls temperature, pressure, and humidity from locally-attached sensors.
+When a local reading is unavailable, each of those values falls back to the
+OpenWeatherMap service, so the device keeps reporting even without attached
+sensors. Wind and sunrise/sunset are always service-derived (there is no local
+sensor for them).
 
 **Supports**
 
@@ -25,7 +29,7 @@ Pulls temperature, pressure, and humidity from locally-attached sensors.
 ### Display
 
 Supports displaying basic information to an attached OLED display; useful for diagnostic work.
-Send the message "wake" to the device to wake up the display for 2 minutes.
+Send the (authorized) message "wake" to the device to wake up the display for 2 minutes.
 
 **Supports**
 
@@ -51,6 +55,12 @@ Direct messages over the mesh are supported too.
 
 **Meshtastic only**:
 The host device will listen on any configured channel for group messages.
+
+**Scheduled broadcasts** (both radios):
+
+* Weather alerts — checked every 5 minutes, broadcast when new ones appear.
+* Forecast — every hour between 6 and 9 AM, and again between 4 and 6 PM.
+* Current weather — every hour during the day (10 AM–3 PM).
 
 ### MQTT Packet Capture
 
@@ -193,8 +203,10 @@ daemon --debug
 * !temperature - Get the current temperature
 * !humidity - Get the current humidity
 * !pressure - Get the current pressure
-* !all - Get temp, humidity, and pressure
-* !forecast - Get the 1-day forecast
+* !all - Get temp, humidity, pressure, wind, and next sun event
+* !sun - Get today's sunrise and sunset
+* !wind - Get the current wind speed and direction
+* !forecast - Get a rolling forecast starting from now
 * !alerts - Get any current weather alerts
 
 ![Example Group Chat](docs/media/chat-group.webp)
@@ -202,18 +214,22 @@ daemon --debug
 
 ## Supported Commands (direct message)
 
+* about - Get the app version and service info
 * help - Get a list of supported commands
 * temperature - Get the current temperature
 * humidity - Get the current humidity
 * pressure - Get the current pressure
+* sun - Get today's sunrise and sunset
+* wind - Get the current wind speed and direction
 * ping - Ping the device
 * uptime - Get the uptime of the device
 * cpu - Get the CPU usage of the device
-* wake - Wake the device display for 2 minutes
-* forecast - Get the 1-day forecast
+* forecast - Get a rolling forecast starting from now
 * alerts - Get any current weather alerts
+* icons - Get all weather icons for the configured icon style (rendering check)
 * 🔒 reboot - Reboot the device
 * 🔒 net - Get the current network status
+* 🔒 wake - Wake the device display for 2 minutes
 
 (🔒 denotes commands which require authorization)
 
@@ -224,16 +240,48 @@ daemon --debug
 ## Example Responses
 
 - 🥶 FREEZING! It's 0°C (32°F) - Just stay home and get some hot chocolate!
-- 🧊 It's currently 8°C (46°F) - Stay inside or bundle up!
+- ❄️ It's currently 8°C (46°F) - Stay inside or bundle up!
 - ☁️ A bit chilly at 12°C (54°F) and rain may be on the horizon.
 - ☀️ Perfectly comfortable at 20°C (68°F).  Go out for a nice walk.
-- 🥵 It's a hot and muggy 33°C (91°F) but feels like 35°C (95°F).  Take water & limit activity.
+- 🔥 It's an oppressive 33°C (91°F) & feels like 46°C (114°F). STAY SAFE AND HYDRATED!
+- Current wind here is 4.5 m/s NNW (gust 7.2 m/s)
+
+```
+Sun in cbus:
+Sunrise 6:32 AM (5h 18m ago)
+Sunset 8:18 PM (in 1h 19m)
+```
+
+```
+☀️ Weather in cbus:
+20.5°C (69°F) | 62.1% humidity | 1013.4 hPa (rising) | wind 4 m/s NNW | sunset 8:18 PM
+```
+
+> The icons shown in the examples above use the modern emoji set; the actual
+> glyphs depend on the configured `icon_style` (see General Configuration).
 
 
 ## Configuration
 
 Configuration of this application is performed via `config.yaml`.
 
+
+### General Configuration
+
+Global settings that don't belong to any one service.
+
+| Option        | Type    | Default      | Description                                                                                                                                 |
+|---------------|---------|--------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| icon_style    | string  | 'compatible' | Glyph set used for weather icons in responses and broadcasts: "modern" (colour emoji) or "compatible" (basic symbols, safest on mesh client fonts) |
+| operated_by   | string  | ''           | Operator name shown by the `about` command (segment omitted when empty)                                                                     |
+
+Example:
+
+```yaml
+general:
+  icon_style: "compatible"
+  operated_by: "My household"
+```
 
 ### Display Configuration
 

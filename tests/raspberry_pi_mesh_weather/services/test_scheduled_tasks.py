@@ -9,6 +9,7 @@ from raspberry_pi_mesh_weather.libs.commands.handler import (
 	CommandResponseSuccess,
 )
 from raspberry_pi_mesh_weather.services.scheduled_tasks import ScheduledTasks
+import raspberry_pi_mesh_weather.services.scheduled_tasks as scheduled_tasks
 
 CMD = 'raspberry_pi_mesh_weather.services.scheduled_tasks.get_command'
 
@@ -67,6 +68,32 @@ def patch_command_by_name(mocker, responses):
 		return cmd
 
 	mocker.patch(CMD, side_effect=fake)
+
+
+def patch_new_alerts(mocker, sequences, label='cbus'):
+	"""
+	Patch scheduled_tasks.get_new_alerts to return the per-call sequence in
+	`sequences` (holding the last value once exhausted), raising if an entry
+	is an Exception instance.  Pin a valid location in config so run_alerts
+	proceeds to the fetch/broadcast path.
+	"""
+	sequences = list(sequences)
+	index = 0
+
+	def side_effect(lat, lon):
+		nonlocal index
+		value = sequences[index] if index < len(sequences) else sequences[-1]
+		index += 1
+		if isinstance(value, Exception):
+			raise value
+		return value
+
+	mocker.patch.object(scheduled_tasks, 'get_new_alerts', side_effect=side_effect)
+	config = mocker.patch.object(scheduled_tasks, 'config')
+	config.location.lat = 33.47
+	config.location.lon = -87.44
+	config.location.label = label
+	return config
 
 
 def run_loop(service, max_iters):
@@ -139,21 +166,24 @@ def test_run_daily_forecast_no_data_does_not_broadcast(mocker):
 def test_run_alerts_success_broadcasts(mocker):
 	sender = FakeSender()
 	svc = ScheduledTasks(sender)
-	patch_command(mocker, CommandResponseSuccess(message='Alerts: tornado'))
+	patch_new_alerts(mocker, [[{'icon': 'ALERT', 'title': 'Tornado Warning'}]])
 
 	result = asyncio.run(svc.run_alerts())
 
-	assert sender.sent == ['Alerts: tornado']
 	assert result is True
+	assert sender.sent == ['ALERT  Tornado Warning']
 
 
-def test_run_alerts_command_missing_does_not_broadcast(mocker):
+def test_run_alerts_missing_location_does_not_broadcast(mocker):
 	sender = FakeSender()
 	svc = ScheduledTasks(sender)
-	mocker.patch(CMD, return_value=None)
+	config = mocker.patch.object(scheduled_tasks, 'config')
+	config.location.lat = None
+	config.location.lon = -87.44
 
 	result = asyncio.run(svc.run_alerts())
 
+	assert result is False
 	assert sender.sent == []
 
 
@@ -164,42 +194,47 @@ def test_run_alerts_failure_does_not_broadcast(mocker):
 
 	result = asyncio.run(svc.run_alerts())
 
+	assert result is False
 	assert sender.sent == []
 
 
 def test_run_alerts_no_data_does_not_broadcast(mocker):
 	sender = FakeSender()
 	svc = ScheduledTasks(sender)
-	patch_command(mocker, CommandResponseNoData('No weather alerts at this time.'))
+	patch_new_alerts(mocker, [[]])
 
 	result = asyncio.run(svc.run_alerts())
 
+	assert result is False
 	assert sender.sent == []
 
 
 def test_run_alerts_gates_repeat_checks_within_interval(mocker):
 	sender = FakeSender()
 	svc = ScheduledTasks(sender)
-	patch_command(mocker, CommandResponseSuccess(message='Alerts: tornado'))
+	patch_new_alerts(mocker, [[{'icon': 'ALERT', 'title': 'Tornado Warning'}]])
 
 	asyncio.run(svc.run_alerts())
 	# Second check in the same tick is within the 5-minute window.
 	asyncio.run(svc.run_alerts())
 
-	assert sender.sent == ['Alerts: tornado']
+	assert sender.sent == ['ALERT  Tornado Warning']
 
 
 def test_run_alerts_runs_again_after_interval(mocker):
 	sender = FakeSender()
 	svc = ScheduledTasks(sender)
-	patch_command(mocker, CommandResponseSuccess(message='Alerts: tornado'))
+	patch_new_alerts(mocker, [[{'icon': 'ALERT', 'title': 'Tornado Warning'}]])
 
 	asyncio.run(svc.run_alerts())
 	# Advance the tick clock past the 5-minute window.
 	svc._current_timestamp += ScheduledTasks.ALERT_INTERVAL
 	asyncio.run(svc.run_alerts())
 
-	assert sender.sent == ['Alerts: tornado', 'Alerts: tornado']
+	assert sender.sent == [
+		'ALERT  Tornado Warning',
+		'ALERT  Tornado Warning',
+	]
 
 
 # --- load / test ----------------------------------------------------------
@@ -222,12 +257,11 @@ def test_run_forecast_and_current_broadcast_in_their_windows(mocker):
 		base + timedelta(hours=12, minutes=1),
 	])
 	svc = ScheduledTasks(sender, clock=clock)
-	no_alerts = [CommandResponseNoData('No alerts')]
 	patch_command_by_name(mocker, {
-		'alerts': no_alerts + no_alerts + no_alerts + no_alerts,
 		'forecast': [CommandResponseSuccess(message='F')],
 		'all': [CommandResponseSuccess(message='W')],
 	})
+	patch_new_alerts(mocker, [[], [], [], []])
 
 	run_loop(svc, 4)
 
@@ -243,15 +277,15 @@ def test_run_alert_preempts_forecast_same_tick(mocker):
 	])
 	svc = ScheduledTasks(sender, clock=clock)
 	patch_command_by_name(mocker, {
-		'alerts': [CommandResponseSuccess(message='A')],
 		'forecast': [CommandResponseSuccess(message='F')],
 	})
+	patch_new_alerts(mocker, [[{'icon': 'ALERT', 'title': 'Tornado Warning'}]])
 
 	run_loop(svc, 1)
 
 	# The alert takes this tick's broadcast slot; the in-window forecast
 	# is skipped.
-	assert sender.sent == ['A']
+	assert sender.sent == ['ALERT  Tornado Warning']
 
 
 def test_run_alert_preempts_current_weather_same_tick(mocker):
@@ -262,14 +296,14 @@ def test_run_alert_preempts_current_weather_same_tick(mocker):
 	])
 	svc = ScheduledTasks(sender, clock=clock)
 	patch_command_by_name(mocker, {
-		'alerts': [CommandResponseSuccess(message='A')],
 		'all': [CommandResponseSuccess(message='W')],
 	})
+	patch_new_alerts(mocker, [[{'icon': 'ALERT', 'title': 'Tornado Warning'}]])
 
 	run_loop(svc, 1)
 
 	# The alert takes this tick's broadcast slot; current weather is skipped.
-	assert sender.sent == ['A']
+	assert sender.sent == ['ALERT  Tornado Warning']
 
 
 def test_run_forecast_still_runs_when_no_alert_sent(mocker):
@@ -280,9 +314,9 @@ def test_run_forecast_still_runs_when_no_alert_sent(mocker):
 	])
 	svc = ScheduledTasks(sender, clock=clock)
 	patch_command_by_name(mocker, {
-		'alerts': [CommandResponseNoData('No alerts')],
 		'forecast': [CommandResponseSuccess(message='F')],
 	})
+	patch_new_alerts(mocker, [[]])
 
 	run_loop(svc, 1)
 
@@ -299,15 +333,12 @@ def test_run_retries_after_failure(mocker):
 	])
 	svc = ScheduledTasks(sender, clock=clock)
 	patch_command_by_name(mocker, {
-		'alerts': [
-			CommandResponseNoData('No alerts'),
-			CommandResponseNoData('No alerts'),
-		],
 		'forecast': [
 			CommandResponseError('open weather map down'),
 			CommandResponseSuccess(message='F'),
 		],
 	})
+	patch_new_alerts(mocker, [[], []])
 
 	run_loop(svc, 2)
 
@@ -324,18 +355,15 @@ def test_run_alert_retries_next_due_tick(mocker):
 	])
 	svc = ScheduledTasks(sender, clock=clock)
 	patch_command_by_name(mocker, {
-		'alerts': [
-			CommandResponseError('api down'),
-			CommandResponseSuccess(message='A'),
-		],
 		'forecast': [CommandResponseNoData()],
 	})
+	patch_new_alerts(mocker, [[], [{'icon': 'ALERT', 'title': 'Tornado Warning'}]])
 
 	run_loop(svc, 2)
 
 	# Tick one alert fails and nothing else is sent; the retry on the next
 	# due tick (past the 5-minute window) succeeds.
-	assert sender.sent == ['A']
+	assert sender.sent == ['ALERT  Tornado Warning']
 
 
 if __name__ == '__main__':

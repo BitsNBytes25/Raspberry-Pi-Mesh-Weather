@@ -9,6 +9,7 @@ from raspberry_pi_mesh_weather.libs import icon_map
 from raspberry_pi_mesh_weather.libs.commands import (
 	about,
 	all_sensors,
+	alerts as alerts_cmd_module,
 	forecast,
 	sun as sun_command_module,
 	temp as temp_module,
@@ -1020,3 +1021,68 @@ def test_about_with_operated_by(mocker):
 	assert result.has_data is True
 	assert result.message == expected
 	assert len(result.message) <= 130
+
+# --- alerts --------------------------------------------------------
+#
+# The 'alerts' command lists every currently-active tracked alert (not just
+# new ones); new-alert dedup/broadcasting lives in the scheduler's
+# get_new_alerts path, not here.
+
+_ALERTS = [
+	{'icon': icon_map.get_icon('flood'), 'title': 'Flood Warning', 'id': 'urn:a1'},
+	{'icon': icon_map.get_icon('cyclone'), 'title': 'Tornado Warning', 'id': 'urn:a2'},
+]
+
+
+def _patch_alerts_cmd(mocker, alerts, label='cbus', lat=33.47, lon=-87.44):
+	config = mocker.patch.object(alerts_cmd_module, 'config')
+	config.location.lat = lat
+	config.location.lon = lon
+	config.location.label = label
+	mocker.patch.object(alerts_cmd_module, 'get_alerts', return_value=list(alerts))
+	return commands.cmd_alerts(None)
+
+
+def test_alerts_command_lists_all_current(mocker):
+	result = _patch_alerts_cmd(mocker, _ALERTS)
+
+	assert result.success is True
+	assert result.has_data is True
+	assert result.message == (
+		f'{icon_map.get_icon("flood")}  Flood Warning\n'
+		f'{icon_map.get_icon("cyclone")}  Tornado Warning'
+	)
+
+
+def test_alerts_command_no_alerts(mocker):
+	result = _patch_alerts_cmd(mocker, [])
+
+	assert result.success is True
+	assert result.has_data is False
+	assert result.message == 'No weather alerts at this time.'
+
+
+def test_alerts_command_no_latitude(mocker):
+	result = _patch_alerts_cmd(mocker, _ALERTS, lat=None)
+
+	assert result.success is False
+	assert result.message == 'No latitude set, unable to pull weather alerts.'
+
+
+def test_alerts_command_no_longitude(mocker):
+	result = _patch_alerts_cmd(mocker, _ALERTS, lon=None)
+
+	assert result.success is False
+	assert result.message == 'No longitude set, unable to pull weather alerts.'
+
+
+def test_alerts_command_fetch_failure(mocker):
+	config = mocker.patch.object(alerts_cmd_module, 'config')
+	config.location.lat = 33.47
+	config.location.lon = -87.44
+	config.location.label = 'cbus'
+	mocker.patch.object(alerts_cmd_module, 'get_alerts', side_effect=Exception('api down'))
+	result = commands.cmd_alerts(None)
+
+	assert result.success is False
+	assert result.message.startswith('Weather Alerts: An error occurred during alert fetching/broadcasting:')

@@ -21,7 +21,28 @@ import logging
 
 from .handler import command, CommandResponse, CommandResponseError, CommandResponseNoData, CommandResponseSuccess
 from raspberry_pi_mesh_weather.libs.config import config
-from raspberry_pi_mesh_weather.libs.weather_alerts import get_new_alerts
+from raspberry_pi_mesh_weather.libs.weather_alerts import get_alerts
+
+
+def build_alerts_response(alerts) -> CommandResponse:
+	"""
+	Build a CommandResponse from a list of alert records.
+
+	Uses config.location.label for the header. Returns a
+	CommandResponseNoData when there are no alerts; otherwise a
+	CommandResponseSuccess listing each record's icon and title, one per line.
+	"""
+	if not alerts:
+		return CommandResponseNoData('No weather alerts at this time.')
+
+	if config.location.label == '':
+		header = 'Weather Alerts'
+	else:
+		header = f'Alerts for {config.location.label}'
+
+	return CommandResponseSuccess(
+		f"{header}:\n" + '\n'.join(f"{alert['icon']}  {alert['title']}" for alert in alerts)
+	)
 
 
 @command('alerts', direct=True, group=True)
@@ -37,21 +58,16 @@ def cmd_alerts(target: str | None = None) -> CommandResponse:
 		logging.error('No longitude set, unable to pull forecast data.')
 		return CommandResponseError('No longitude set, unable to pull weather alerts.')
 
-	if config.location.label == '':
-		header = 'Weather Alerts'
-	else:
-		header = f'Alerts for {config.location.label}'
-
 	logging.debug('--- Running Alerts Fetch ---')
 	try:
 		# Only ever-unseen tracked alerts: dedup lives in weather_alerts.
-		new_alerts = get_new_alerts(lat, lon)
+		all_alerts = get_alerts(lat, lon)
 
-		if not new_alerts:
+		if not all_alerts:
 			return CommandResponseNoData('No weather alerts at this time.')
 
 		return CommandResponseSuccess(
-			f"{header}:\n" + '\n'.join(f"{alert['icon']}  {alert['title']}" for alert in new_alerts)
+			'\n'.join(f"{alert['icon']}  {alert['title']}" for alert in all_alerts)
 		)
 	except Exception as e:
 		error_msg = f"Weather Alerts: An error occurred during alert fetching/broadcasting: {e}"
