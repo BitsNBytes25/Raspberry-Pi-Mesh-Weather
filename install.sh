@@ -59,14 +59,26 @@ for SENSOR in $(yq -r '(.sensors // [])[].type' "$CONFIG"); do
 	UVCMD+=(--group sensor-$SENSOR)
 done
 
-if [ "$(yq -r '.ai.enabled // false' "$CONFIG")" == "true" ]; then
-	# torch by default will install cuda libraries; these are not available on a raspberry pi.
-	# Install the CPU version manually to ensure it doesn't try to use cuda.
-	echo "Installing CPU version of torch for AI support"
-	$UV_PATH pip install torch --index-url https://download.pytorch.org/whl/cpu
+AI_GROUP_ADDED=false
 
-	echo "Enabling dependencies for AI command resolver (sentence-transformers)"
-	UVCMD+=(--group ai)
+if [ "$(yq -r '.ai.enabled // false' "$CONFIG")" == "true" ]; then
+	TOTAL_MEM_MB=$(awk '/^MemTotal:/ {printf "%.0f", $2/1024}' /proc/meminfo)
+	if [ "${TOTAL_MEM_MB:-0}" -lt 1980 ]; then
+		# Check if the total amount of system memory is too low to enable AI features.
+		# Technically the user can run it using swap, but this is REALLY not recommended
+		echo "⚠️  WARNING: Only ${TOTAL_MEM_MB} MB of RAM detected. AI support requires ~2 GB."
+		echo "     Skipping AI dependencies (torch + sentence-transformers)."
+		echo "     The daemon will run, but AI features will be unavailable until installed on a device with more memory."
+	else
+		# torch by default will install cuda libraries; these are not available on a raspberry pi.
+		# Install the CPU version manually to ensure it doesn't try to use cuda.
+		echo "Installing CPU version of torch for AI support"
+		$UV_PATH pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+		echo "Enabling dependencies for AI command resolver (sentence-transformers)"
+		UVCMD+=(--group ai)
+		AI_GROUP_ADDED=true
+	fi
 fi
 
 echo "Installing all Python dependencies"
@@ -81,7 +93,7 @@ echo "Installing all Python dependencies"
 # files, e.g.:
 #
 #   huggingface-cli download sentence-transformers/all-MiniLM-L6-v2 --local-dir /path/to/model
-if [ "$(yq -r '.ai.enabled // false' "$CONFIG")" == "true" ]; then
+if [ "$AI_GROUP_ADDED" = "true" ]; then
 	echo "AI command resolver enabled; the model will be downloaded on first run (if online)"
 fi
 
