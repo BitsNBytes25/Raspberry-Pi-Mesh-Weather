@@ -22,9 +22,106 @@ import sys
 import argparse
 import logging
 
+import psutil
+
 from raspberry_pi_mesh_weather.libs.commands import get_command
-from raspberry_pi_mesh_weather.libs.config import config
-from raspberry_pi_mesh_weather.services.service import ShutdownRequested
+from raspberry_pi_mesh_weather.libs.config import config, SensorConfig
+from raspberry_pi_mesh_weather.services.service import ShutdownRequested, Service
+
+
+async def _load_radio(radio_name: str = '') -> tuple[Service|None, bool]:
+	"""
+	Lazy load the requested radio service
+
+	Handles failures like import failed.
+	:param radio_name:
+	:return:
+	"""
+
+	try:
+		if radio_name == 'meshcore':
+			from raspberry_pi_mesh_weather.services.radios.meshcore_radio import MeshcoreRadio
+			radio = MeshcoreRadio()
+		elif radio_name == 'meshtastic':
+			from raspberry_pi_mesh_weather.services.radios.meshtastic_radio import MeshtasticRadio
+			radio = MeshtasticRadio()
+		elif radio_name == 'cli':
+			from raspberry_pi_mesh_weather.services.radios.cli_radio import CliRadio
+			radio = CliRadio()
+		else:
+			logging.error('Unsupported radio type requested')
+			return None, False
+	except Exception as e:
+		logging.error('%s could not be loaded: %s', radio_name, e)
+		return None, False
+
+	logging.info('Loading radio %s', radio.get_name())
+	loadable = await radio.load()
+
+	if not loadable:
+		logging.error('%s could not be loaded!', radio.get_name())
+	return radio, loadable
+
+
+async def _load_sensor(sensor_opts: SensorConfig) -> tuple[Service|None, bool]:
+	"""
+	Lazy load a sensor
+
+	:param sensor_opts:
+	:return:
+	"""
+	try:
+		if sensor_opts.type == 'bme280':
+			from raspberry_pi_mesh_weather.services.sensors.bme280_sensor import Bme280Sensor
+			sensor = Bme280Sensor(sensor_opts)
+		else:
+			logging.error('Unsupported sensor type requested: [%s]', sensor_opts.type)
+			return None, False
+	except Exception as e:
+		logging.error('%s could not be loaded: %s', sensor_opts.type, e)
+		return None, False
+
+	logging.info('Loading sensor %s', sensor.get_name())
+	loadable = await sensor.load()
+	if not loadable:
+		logging.error('%s could not be loaded!', sensor.get_name())
+	return sensor, loadable
+
+
+async def _load_service(service_name: str, *args, **kwargs) -> tuple[Service|None, bool]:
+	"""
+	Lazy load a generic service
+
+	:param service_name:
+	:param args: positional constructor arguments
+	:param kwargs: keyword constructor arguments
+	:return:
+	"""
+	try:
+		if service_name == 'ai':
+			from raspberry_pi_mesh_weather.services.ai import AiService
+			service = AiService()
+		elif service_name == 'tasks':
+			from raspberry_pi_mesh_weather.services.scheduled_tasks import ScheduledTasks
+			service = ScheduledTasks(*args, **kwargs)
+		elif service_name == 'homeassistant':
+			from raspberry_pi_mesh_weather.services.misc.home_assistant import HomeAssistant
+			service = HomeAssistant()
+		elif service_name == 'sh1106_display':
+			from raspberry_pi_mesh_weather.services.displays.sh1106_display import Sh1106Display
+			service = Sh1106Display()
+		else:
+			logging.error('Unsupported service requested: [%s]', service_name)
+			return None, False
+	except Exception as e:
+		logging.error('%s could not be loaded: %s', service_name, e)
+		return None, False
+
+	logging.info('Loading service %s', service.get_name())
+	loadable = await service.load()
+	if not loadable:
+		logging.error('%s could not be loaded!', service.get_name())
+	return service, loadable
 
 
 async def daemon_main(test: bool = False):
@@ -35,145 +132,55 @@ async def daemon_main(test: bool = False):
 
 	# All the services that are running on this primary process
 	services = []
-	tasks = []
 
 	# Load sensors
 	for sensor_opts in config.sensors:
-		if sensor_opts.type == 'bme280':
-			from raspberry_pi_mesh_weather.services.sensors.bme280_sensor import Bme280Sensor
-			sensor = Bme280Sensor(sensor_opts)
-			logging.debug('Loading %s', sensor.get_name())
-			loadable = await sensor.load()
-			if loadable:
-				if test:
-					await sensor.test()
-				else:
-					services.append(sensor)
-					tasks.append(sensor.start())
-			else:
-				logging.error('%s could not be loaded!', sensor.get_name())
-		else:
-			logging.error('Unsupported sensor type requested')
+		sensor, loadable = await _load_sensor(sensor_opts)
+		if loadable and sensor:
+			services.append(sensor)
 
 	# Load the appropriate radio
-	radio = None
-	radio_loaded = False
-	if config.radio.type == 'meshcore':
-		from raspberry_pi_mesh_weather.services.radios.meshcore_radio import MeshcoreRadio
-		radio = MeshcoreRadio()
-		logging.debug('Loading %s', radio.get_name())
-		loadable = await radio.load()
-		if loadable:
-			radio_loaded = True
-			if test:
-				await radio.test()
-			else:
-				services.append(radio)
-				tasks.append(radio.start())
-		else:
-			logging.error('%s could not be loaded!', radio.get_name())
-			radio = None
-	elif config.radio.type == 'meshtastic':
-		from raspberry_pi_mesh_weather.services.radios.meshtastic_radio import MeshtasticRadio
-		radio = MeshtasticRadio()
-		logging.debug('Loading %s', radio.get_name())
-		loadable = await radio.load()
-		if loadable:
-			radio_loaded = True
-			if test:
-				await radio.test()
-			else:
-				services.append(radio)
-				tasks.append(radio.start())
-		else:
-			logging.error('%s could not be loaded!', radio.get_name())
-			radio = None
-	elif config.radio.type == 'cli':
-		from raspberry_pi_mesh_weather.services.radios.cli_radio import CliRadio
-		radio = CliRadio()
-		logging.debug('Loading %s', radio.get_name())
-		loadable = await radio.load()
-		if loadable:
-			radio_loaded = True
-			if test:
-				await radio.test()
-			else:
-				services.append(radio)
-				tasks.append(radio.start())
-		else:
-			logging.error('%s could not be loaded!', radio.get_name())
-			radio = None
-	else:
-		logging.error('Unsupported radio type requested')
+	radio, radio_loaded = await _load_radio(config.radio.type)
+	if radio_loaded and radio:
+		services.append(radio)
 
 	# Load the AI command resolver if requested (opt-in; an in-process
 	# sentence transformer for natural-language direct-message resolution)
 	if config.ai.enabled:
-		from raspberry_pi_mesh_weather.services.ai import AiService, set_ai_service
-		ai = AiService()
-		logging.debug('Loading %s', ai.get_name())
-		loadable = await ai.load()
-		if loadable:
-			if test:
-				await ai.test()
-			else:
-				set_ai_service(ai)
-				services.append(ai)
-				tasks.append(ai.start())
+		ai, loadable = await _load_service('ai')
+		if loadable and ai:
+			services.append(ai)
 		else:
 			logging.error('AI command resolver could not be loaded; natural-language direct messages will require exact command matches')
 
 	# Load the shared scheduled tasks service (currently runs the morning and
 	# evening forecast broadcast, which is radio-independent once the radio
 	# implements `broadcast`)
-	if radio_loaded:
-		from raspberry_pi_mesh_weather.services.scheduled_tasks import ScheduledTasks
-		scheduled = ScheduledTasks(radio)
-		logging.debug('Loading %s', scheduled.get_name())
-		loadable = await scheduled.load()
-		if loadable:
-			if test:
-				await scheduled.test()
-			else:
-				services.append(scheduled)
-				tasks.append(scheduled.start())
-		else:
-			logging.error('%s could not be loaded!', scheduled.get_name())
+	if radio_loaded and radio:
+		scheduled, loadable = await _load_service('tasks', radio)
+		if loadable and scheduled:
+			services.append(scheduled)
 
 	# Load Home Assistant integration if requested
 	if config.home_assistant.url:
-		from raspberry_pi_mesh_weather.services.misc.home_assistant import HomeAssistant
-		ha = HomeAssistant()
-		logging.debug('Loading %s', ha.get_name())
-		loadable = await ha.load()
-		if loadable:
-			if test:
-				await ha.test()
-			else:
-				services.append(ha)
-				tasks.append(ha.start())
-		else:
-			logging.error('%s could not be loaded!', ha.get_name())
+		ha, loadable = await _load_service('homeassistant')
+		if loadable and ha:
+			services.append(ha)
 
 	# Load the display if one is enabled
 	if config.display.enabled:
 		if config.display.type == 'sh1106':
-			from raspberry_pi_mesh_weather.services.displays.sh1106_display import Sh1106Display
-			display = Sh1106Display()
-			logging.debug('Loading %s', display.get_name())
-			loadable = await display.load()
-			if loadable:
-				if test:
-					await display.test()
-				else:
-					services.append(display)
-					tasks.append(display.start())
-			else:
-				logging.error('%s could not be loaded!', display.get_name())
+			display, loadable = await _load_service('sh1106_display')
+			if loadable and display:
+				services.append(display)
 		else:
 			logging.warning('Unsupported display type requested')
 
 	if test:
+		logging.info('TEST mode requested; running quick service tests and exiting!')
+
+		for service in services:
+			await service.test()
 		# Get a list of commands to test too
 		from .libs.commands.handler import _direct_commands
 		cmds = []
@@ -197,7 +204,14 @@ async def daemon_main(test: bool = False):
 		logging.debug('Test mode requested, exiting.')
 		sys.exit(0)
 
+	tasks = []
+	for service in services:
+		tasks.append(service.start())
+
 	# Run all the services within this application
+	process = psutil.Process()
+	mem_used = round(process.memory_info().rss / 1024 / 1024, 0)
+	logging.info('Daemon ready, using %dMB memory', mem_used)
 	try:
 		await asyncio.gather(*tasks)
 	except KeyboardInterrupt:
@@ -237,6 +251,8 @@ def main():
 		logging.getLogger().setLevel(logging.DEBUG)
 		logging.basicConfig(level=logging.DEBUG)
 		logging.debug("Debug mode enabled")
+	else:
+		logging.basicConfig(level=logging.INFO)
 
 	asyncio.run(daemon_main(args.test))
 

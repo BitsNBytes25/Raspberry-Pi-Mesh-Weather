@@ -68,7 +68,7 @@ class CliRadio(Service):
 
 	async def test(self):
 		"""No hardware to test; the prompt is interactive."""
-		logging.debug('CLI Radio: ready (no hardware attached)')
+		print('CLI Radio: ready (no hardware attached)')
 
 	async def run(self):
 		self._print_banner()

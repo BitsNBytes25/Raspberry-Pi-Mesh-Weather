@@ -15,8 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`resolve_message()`** (`libs/commands/handler.py`) — Direct-message resolution entry point: exact `get_command()` first, then the AI resolver. Both radio DM handlers now dispatch through it (group-channel and scheduled-task paths are unchanged).
 - **Optional AI setup in `install.sh`** — When `ai.enabled` is true, the `ai` dependency group (`sentence-transformers`) is added to the `uv sync` invocation. The model is downloaded to the local Hugging Face cache on first daemon load when online; for offline Pis, point `ai.model_path` at a local directory (e.g. produced with `huggingface-cli download`).
 - **Hardware-free CLI radio** (`services/radios/cli_radio.py`) — A development "radio" that uses no hardware and presents an interactive terminal prompt instead.  Enable with `radio.type: "cli"`, start the daemon, and type messages as if received over the mesh.  Each line is treated as a *direct message* and resolved through the same `resolve_message` path used by the other radios (exact/alias match, then the opt-in AI resolver, run on a worker thread), executed against a target, and printed to the terminal — so the full command machinery can be exercised without attached radio hardware.  Plain lines use a default sender target (new `radio.target` config key, falling back to the first `auth_radios` entry); a leading `@<pubkey>` overrides it for a specific radio, and the auth guard is enforced exactly as over the mesh (unauthorized callers get the standard "not authorized" response).  Scheduled-task `broadcast(text)` output is echoed to the terminal.  `?` shows the CLI help; `quit`, `exit`, or `Ctrl-D (EOF)` request a daemon shutdown via a new `ShutdownRequested` exception in `services/service.py`, caught in the daemon so every service is stopped cleanly.  `daemon.py` gained the `cli` radio branch and the `ShutdownRequested` handler; `RadioConfig` gained the `target` key.
+- Add new method **register_message_handler** for registering a custom function for processing direct messages.  Provides support for more advanced interactions beyond simple command/response.
  
 ### Changed
+
+- Retooled service loading and standardized interface in the daemon; should make it easier to add new services in the future.
 
 
 ## [2.0.0] - 2026-11-17

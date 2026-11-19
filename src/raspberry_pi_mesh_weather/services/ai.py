@@ -19,15 +19,14 @@
 
 import asyncio
 import logging
+from typing import Callable
+from sentence_transformers import SentenceTransformer
+import psutil
 
+from raspberry_pi_mesh_weather.libs.commands.handler import register_message_handler, get_command
 from raspberry_pi_mesh_weather.libs.config import config
-from raspberry_pi_mesh_weather.libs.commands import command_catalog
+from raspberry_pi_mesh_weather.libs.commands import command_catalog, CommandResponse
 from raspberry_pi_mesh_weather.services.service import Service
-
-try:
-	from sentence_transformers import SentenceTransformer
-except ImportError:
-	SentenceTransformer = None
 
 
 class AiService(Service):
@@ -47,9 +46,9 @@ class AiService(Service):
 
 	def __init__(self):
 		super().__init__()
-		self._model = None
+		self._model: SentenceTransformer = None
 		self._embeddings = None
-		self._anchor_count = 0
+		self._anchor_count: int = 0
 
 	def get_name(self):
 		return 'AI Command Resolver (sentence-transformers)'
@@ -92,8 +91,10 @@ class AiService(Service):
 			)
 			return False
 
+		process = psutil.Process()
+		ss_before = process.memory_info().rss
 		try:
-			logging.debug(f'Loading model {config.ai.model_path}...')
+			logging.info(f'Loading model {config.ai.model_path}...')
 			self._model = await asyncio.to_thread(
 				SentenceTransformer,
 				config.ai.model_path,
@@ -109,17 +110,23 @@ class AiService(Service):
 			)
 			return False
 
+		ss_after = process.memory_info().rss
+
 		if not indexed:
 			self._model = None
 			logging.error('AI command resolver could not index command anchors; not loaded')
 			return False
 
+		# Load the AI resolver into the message handlers
+		register_message_handler(self.resolve)
+
 		self.running = True
+		mem_used = round((ss_after - ss_before) / 1024 / 1024, 0)
 		logging.info(
-			'AI command resolver ready (%s; %d anchors indexed across %d commands)',
-			config.ai.model_path,
+			'AI command resolver ready (%d anchors indexed across %d commands, %dMB used)',
 			self._anchor_count,
 			len(self._embeddings),
+			mem_used
 		)
 		return True
 
@@ -130,12 +137,9 @@ class AiService(Service):
 		self.running = False
 
 	async def test(self):
-		if self._model is not None:
-			print(f'AI command resolver ready. Model: {config.ai.model_path} (threshold {config.ai.threshold}, {self._anchor_count} anchors indexed)')
-		else:
-			print('AI command resolver not running (ai.enabled is false or load failed)')
+		print(f'AI command resolver ready. Model: {config.ai.model_path} (threshold {config.ai.threshold}, {self._anchor_count} anchors indexed)')
 
-	def resolve(self, text: str) -> str | None:
+	def resolve(self, text: str) -> Callable[[str | None], CommandResponse] | None:
 		"""
 		Map `text` onto a command by embedding it and comparing against the
 		cached anchor embeddings.
@@ -161,22 +165,10 @@ class AiService(Service):
 					best_score, best_name = score, name
 
 		if best_name is not None and best_score >= config.ai.threshold:
-			return best_name
+			return get_command(str(best_name))
 		return None
 
 	async def resolve_async(self, text: str) -> str | None:
 		# Worker-thread resolution so the daemon's event loop is never
 		# blocked by the (potentially slow) model call.
 		return await asyncio.to_thread(self.resolve, text)
-
-
-_ai_service: AiService | None = None
-
-
-def set_ai_service(service: AiService):
-	global _ai_service
-	_ai_service = service
-
-
-def get_ai_service() -> AiService | None:
-	return _ai_service

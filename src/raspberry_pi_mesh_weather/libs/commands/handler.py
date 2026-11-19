@@ -55,6 +55,7 @@ class CommandResponseNoData(CommandResponse):
 _direct_commands = {}
 _group_commands = {}
 _aliases = {}
+_message_handlers = []
 
 
 def command(
@@ -104,6 +105,16 @@ def command(
 
 		return wrapper
 	return decorator
+
+
+def register_message_handler(handler: Callable[[str], CommandResponse | None]):
+	"""
+	Register a custom message handler, useful for extended functionality in DMs beyond simple commands
+
+	:param handler:
+	:return:
+	"""
+	_message_handlers.append(handler)
 
 
 def resolve_cmd_alias(cmd: str) -> str:
@@ -191,26 +202,9 @@ def resolve_message(text: str) -> Callable[[str | None], CommandResponse] | None
 	cmd = get_command(text)
 	if cmd is not None:
 		return cmd
-	ai_cmd = _ai_resolve(text)
-	return get_command(ai_cmd) if ai_cmd else None
-
-
-def _ai_resolve(text: str):
-	"""
-	Ask the local AI model which command matches `text`.
-
-	Only consulted after exact/alias resolution has failed.
-
-	:return: a command name or alias, or None when the AI is disabled or
-		unavailable
-	"""
-	try:
-		# Lazy import to avoid a circular dependency between libs.commands
-		# and services (services/ai.py imports the handler at module level).
-		from raspberry_pi_mesh_weather.services.ai import get_ai_service
-	except ImportError:
-		return None
-	ai = get_ai_service()
-	if ai is None:
-		return None
-	return ai.resolve(text)
+	# Check the extendable handlers
+	for handler in _message_handlers:
+		cmd = handler(text)
+		if cmd is not None:
+			return cmd
+	return None
