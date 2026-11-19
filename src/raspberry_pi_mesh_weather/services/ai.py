@@ -93,8 +93,11 @@ class AiService(Service):
 			return False
 
 		try:
+			logging.debug(f'Loading model {config.ai.model_path}...')
 			self._model = await asyncio.to_thread(
-				SentenceTransformer, config.ai.model_path
+				SentenceTransformer,
+				config.ai.model_path,
+				device=config.ai.device
 			)
 			indexed = await asyncio.to_thread(self._index_anchors, self._model)
 		except Exception as e:
@@ -128,14 +131,9 @@ class AiService(Service):
 
 	async def test(self):
 		if self._model is not None:
-			logging.info(
-				'AI command resolver ready. Model: %s (threshold %s, %d anchors indexed)',
-				config.ai.model_path,
-				config.ai.threshold,
-				self._anchor_count,
-			)
+			print(f'AI command resolver ready. Model: {config.ai.model_path} (threshold {config.ai.threshold}, {self._anchor_count} anchors indexed)')
 		else:
-			logging.info('AI command resolver not running (ai.enabled is false or load failed)')
+			print('AI command resolver not running (ai.enabled is false or load failed)')
 
 	def resolve(self, text: str) -> str | None:
 		"""

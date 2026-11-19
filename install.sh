@@ -17,6 +17,15 @@ if [ ! -e "$CONFIG" ]; then
 	exit 1
 fi
 
+# If the service exists, ensure it is stopped before updating the system.
+if [ -e /etc/systemd/system/mesh-weather.service ]; then
+	if sudo systemctl is-active mesh-weather >/dev/null; then
+		echo "Stopping mesh-weather prior to update"
+		sudo systemctl stop mesh-weather
+	fi
+fi
+
+
 if ! command -v yq &> /dev/null; then
 	echo "Installing yq as dependency for installation"
 	sudo apt install -y yq
@@ -107,8 +116,14 @@ sudo systemctl daemon-reload
 echo "✅ Enabling services on boot..."
 sudo systemctl enable mesh-weather.service
 
+echo "Testing daemon..."
+if ! $UV_PATH run daemon --test; then
+	echo "!! TEST RUN FAILED !!"
+	exit 1
+fi
+
 echo "▶️ Starting services..."
-sudo systemctl restart mesh-weather.service
+sudo systemctl start mesh-weather.service
 
 echo "🎉 Installation complete!"
 echo "Check status with: systemctl status mesh-weather"

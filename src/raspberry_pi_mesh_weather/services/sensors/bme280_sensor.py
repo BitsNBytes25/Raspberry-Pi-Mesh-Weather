@@ -36,17 +36,8 @@ class Bme280Sensor(Service):
 		logging.debug(f'Loading BME280 sensor on port {addr_label}...')
 		self.sensor = bme280.BME280(i2c_dev=self.bus)
 
-		# Load calibration parameters
-		#logging.debug(f"Loading calibration parameters on address {addr_label}...")
-		#self.calibration_params = bme280.load_calibration_params(self.bus, self.options.address)
-
-		# Wait a moment for calibration to complete
-		#logging.debug("Waiting 2 seconds for calibration to complete...")
-		#await asyncio.sleep(2)
-
 		# Perform an initial read to confirm sensor is connected
 		self.sensor.update_sensor()
-		#data = bme280.sample(self.bus, self.options.address, self.calibration_params)
 
 		return True
 

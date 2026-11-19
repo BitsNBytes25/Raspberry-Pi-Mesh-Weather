@@ -34,6 +34,10 @@ class RadioConfig:
 
 @dataclass
 class AiConfig:
+	"""
+	Configuration handler for AI options
+
+	"""
 	# Optional in-process command resolver: a small sentence-transformer model
 	# classifies unrecognized direct messages into a known command.  Exact
 	# command/alias matches are always tried first and win; the model is only
@@ -43,7 +47,12 @@ class AiConfig:
 	#
 	# Anchors are the command functions' docstrings (one phrasing per line);
 	# their embeddings are generated once at daemon startup.
+
 	enabled: bool = False
+	"""
+	Set to True to enable this service; setting to False (default) will prevent any natural language support
+	"""
+
 	# Hugging Face model ID (auto-downloaded on first load, or cached if already
 	# present) or an absolute path to a local directory containing the model
 	# files (for offline Pis).
@@ -51,6 +60,10 @@ class AiConfig:
 	# Minimum cosine similarity between a message embedding and a command's
 	# anchors for it to be considered a match (0.0-1.0; higher is stricter).
 	threshold: float = 0.55
+	device: str = 'cpu'
+	"""
+	 device (str, optional): Device (like "cuda", "cpu", "mps", "npu") that should be used for computation.
+	"""
 
 
 @dataclass

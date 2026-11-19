@@ -114,9 +114,12 @@ async def daemon_main(test: bool = False):
 		logging.debug('Loading %s', ai.get_name())
 		loadable = await ai.load()
 		if loadable:
-			set_ai_service(ai)
-			services.append(ai)
-			tasks.append(ai.start())
+			if test:
+				await ai.test()
+			else:
+				set_ai_service(ai)
+				services.append(ai)
+				tasks.append(ai.start())
 		else:
 			logging.error('AI command resolver could not be loaded; natural-language direct messages will require exact command matches')
 
