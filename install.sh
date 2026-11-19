@@ -51,6 +51,11 @@ for SENSOR in $(yq -r '(.sensors // [])[].type' "$CONFIG"); do
 done
 
 if [ "$(yq -r '.ai.enabled // false' "$CONFIG")" == "true" ]; then
+	# torch by default will install cuda libraries; these are not available on a raspberry pi.
+	# Install the CPU version manually to ensure it doesn't try to use cuda.
+	echo "Installing CPU version of torch for AI support"
+	$UV_PATH pip install torch --index-url https://download.pytorch.org/whl/cpu
+
 	echo "Enabling dependencies for AI command resolver (sentence-transformers)"
 	UVCMD+=(--group ai)
 fi

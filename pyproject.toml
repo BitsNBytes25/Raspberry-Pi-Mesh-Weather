@@ -31,7 +31,8 @@ radio-meshtastic = [
 ]
 sensor-bme280 = [
     "pimoroni-bme280>=1.0.0",
-    "rpi-bme280>=0.2.4",
+#    "bme280>=0.7",
+#    "rpi-bme280>=0.2.4",
 ]
 display-sh1106 = [
     "luma.oled>=3.15.0",
