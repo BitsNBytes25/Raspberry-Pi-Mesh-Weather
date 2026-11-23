@@ -13,9 +13,10 @@ import math
 import numpy as np
 import pytest
 
-from raspberry_pi_mesh_weather.libs.commands import command_catalog
-from raspberry_pi_mesh_weather.services import ai as ai_module
-from raspberry_pi_mesh_weather.services.ai import AiService, get_ai_service, set_ai_service
+import raspberry_pi_mesh_weather.libs.commands.handler as handler_module
+from raspberry_pi_mesh_weather.libs.commands import command_catalog, get_command, resolve_message
+from raspberry_pi_mesh_weather.services.ai import AiService
+import raspberry_pi_mesh_weather.services.ai as ai_module
 
 
 class _FakeModel:
@@ -72,9 +73,9 @@ def _command_direction(name):
 @pytest.fixture
 def ai_config(mocker):
 	config = mocker.patch.object(ai_module, 'config')
-	config.ai.enabled = True
-	config.ai.model_path = 'sentence-transformers/test-model'
-	config.ai.threshold = 0.5
+	config.resolver.enabled = True
+	config.resolver.model_path = 'sentence-transformers/test-model'
+	config.resolver.threshold = 0.5
 	return config
 
 
@@ -153,21 +154,21 @@ class TestResolve:
 	async def test_resolves_exact_anchor_phrase(self, ai_config, service, fake_model):
 		entry = next(e for e in command_catalog() if e['name'] == 'pressure')
 		await service.load()
-		assert service.resolve(entry['anchors'][0]) == 'pressure'
+		assert service.resolve(entry['anchors'][0]) is get_command('pressure')
 
 	@pytest.mark.asyncio
 	async def test_resolves_nearby_phrase(self, ai_config, service, fake_model):
 		table = _FakeModel._vector_table
 		table['how hot is it'] = [0.9 * x for x in _command_direction('temperature')]
 		await service.load()
-		assert service.resolve('how hot is it') == 'temperature'
+		assert service.resolve('how hot is it') is get_command('temperature')
 
 	@pytest.mark.asyncio
 	async def test_resolves_distinct_commands_are_distinct(self, ai_config, service, fake_model):
 		await service.load()
 		for name in ['humidity', 'wind', 'forecast']:
 			table_entry = next(e for e in command_catalog() if e['name'] == name)['anchors'][0]
-			assert service.resolve(table_entry) == name
+			assert service.resolve(table_entry) is get_command(name)
 
 	@pytest.mark.asyncio
 	async def test_returns_none_when_unrelated(self, ai_config, service, fake_model):
@@ -186,14 +187,28 @@ class TestResolve:
 		table = _FakeModel._vector_table
 		table['how hot is it'] = [0.9 * x for x in _command_direction('temperature')]
 		await service.load()
-		assert await service.resolve_async('how hot is it') == 'temperature'
+		assert await service.resolve_async('how hot is it') is get_command('temperature')
 
 
-class TestSingleton:
-	def test_set_and_get(self):
-		assert get_ai_service() is None
-		svc = AiService()
-		set_ai_service(svc)
-		assert get_ai_service() is svc
-		set_ai_service(None)
-		assert get_ai_service() is None
+@pytest.mark.asyncio
+class TestWiring:
+	"""
+	The resolver registers itself as a message handler, so `resolve_message`
+	consults it only after exact name/alias matches.
+	"""
+
+	async def test_registered_handler_resolves_via_resolve_message(self, ai_config, service, fake_model):
+		await service.load()
+		assert service.resolve in handler_module._message_handlers
+		assert resolve_message('how hot is it') is get_command('temperature')
+
+	async def test_exact_match_short_circuits_registered_handler(self, ai_config, service, fake_model):
+		# 'temp' is not in the fake model's vector table, so the registered
+		# handler would yield None; the exact/alias path must win instead.
+		await service.load()
+		assert resolve_message('temp') is get_command('temp')
+
+	async def test_registered_handler_unrelated_returns_none(self, ai_config, service, fake_model):
+		_FakeModel._vector_table['unrelated phrase'] = [0.0, 0.0, 1.0]
+		await service.load()
+		assert resolve_message('unrelated phrase') is None

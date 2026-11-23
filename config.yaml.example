@@ -58,29 +58,43 @@ home_assistant:
   token: ""
 
 
-# AI Command Resolution (optional)
+# Command Resolver (optional)
 #
-# Runs a small sentence transformer in-process (no sidecar process) so users
-# can ask for things in plain language over direct messages (e.g. "what's the
+# Direct messages can be phrased in natural language (e.g. "what's the
 # temperature?").  Each command function's docstring lines are its anchor
-# phrasings, embedded once at daemon startup; exact command/alias matches are
-# always tried first and win, and the model only ever picks from the existing
-# command catalog.  Replies are produced by the normal commands.  If the
-# resolver is unavailable or no anchor matches closely enough (ai.threshold),
-# the usual "I don't understand that command" response is sent.
+# phrasings; exact command/alias matches are always tried first and win, and
+# the resolver only ever picks from the existing command catalog.  Replies are
+# produced by the normal commands.  When the resolver is unavailable or no
+# anchor matches closely enough (ai.threshold / ai.nltk_threshold), the usual
+# "I don't understand that command" response is sent.
 #
-# A 2GB Raspberry Pi is the recommended minimum (the torch runtime is the big
-# footprint; the model itself is ~39 MB).  Replies typically take tens to low
-# hundreds of milliseconds once the model is loaded.
-ai:
+# Two backends are available, selected with ai.backend:
+#   - "transformer" — a small in-process sentence transformer (no sidecar
+#     process).  Best natural-language support, but heavy: the torch runtime
+#     plus a ~39 MB model; a 2GB Raspberry Pi is the recommended minimum.
+#     Replies typically take tens to low hundreds of milliseconds.
+#   - "nltk" — a lightweight lexical resolver (stemmed TF-IDF bag-of-words
+#     cosine similarity) with only a few hundred KB of nltk data and a few
+#     MB of RAM.  The fallback for low-memory Pis.
+# "auto" (default) uses the sentence-transformer resolver when it can load and
+# falls back to nltk when it cannot (low-RAM Pis, or an offline Pi with no
+# model cache).
+resolver:
   enabled: false
+  # "auto" | "ai" | "nltk" (see the section comment above)
+  backend: auto
+  # AI Transformer backend only:
   # Hugging Face model ID (auto-downloaded on first daemon load when online)
   # or an absolute path to a directory containing the model files for offline
   # Pis (e.g. produced with `huggingface-cli download ... --local-dir`).
   model_path: sentence-transformers/all-MiniLM-L6-v2
   # Minimum cosine similarity between a message and a command's anchors for it
-  # to be considered a match (0.0-1.0; higher is stricter).
+  # to be considered a match (0.0-1.0; higher is stricter).  Transformer only.
   threshold: 0.55
+  device: cpu
+  # nltk backend only: minimum cosine similarity for a match.  Defaults to
+  # ai.threshold when left unset.
+  #nltk_threshold: 0.55
 
 
 # Security

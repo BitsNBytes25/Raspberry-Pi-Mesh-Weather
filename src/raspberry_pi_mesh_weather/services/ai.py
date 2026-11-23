@@ -78,10 +78,10 @@ class AiService(Service):
 		return self._anchor_count
 
 	async def load(self) -> bool:
-		if not config.ai.enabled:
+		if not config.resolver.enabled:
 			logging.info('AI command resolver disabled in configuration')
 			return False
-		if not config.ai.model_path:
+		if not config.resolver.model_path:
 			logging.error('ai.enabled is true but ai.model_path is empty; AI command resolver not loaded')
 			return False
 		if SentenceTransformer is None:
@@ -94,18 +94,18 @@ class AiService(Service):
 		process = psutil.Process()
 		ss_before = process.memory_info().rss
 		try:
-			logging.info(f'Loading model {config.ai.model_path}...')
+			logging.info(f'Loading model {config.resolver.model_path}...')
 			self._model = await asyncio.to_thread(
 				SentenceTransformer,
-				config.ai.model_path,
-				device=config.ai.device
+				config.resolver.model_path,
+				device=config.resolver.device
 			)
 			indexed = await asyncio.to_thread(self._index_anchors, self._model)
 		except Exception as e:
 			self._model = None
 			logging.error(
 				'AI command resolver could not load model %s: %s',
-				config.ai.model_path,
+				config.resolver.model_path,
 				e,
 			)
 			return False
@@ -137,7 +137,7 @@ class AiService(Service):
 		self.running = False
 
 	async def test(self):
-		print(f'AI command resolver ready. Model: {config.ai.model_path} (threshold {config.ai.threshold}, {self._anchor_count} anchors indexed)')
+		print(f'AI command resolver ready. Model: {config.resolver.model_path} (threshold {config.resolver.threshold}, {self._anchor_count} anchors indexed)')
 
 	def resolve(self, text: str) -> Callable[[str | None], CommandResponse] | None:
 		"""
@@ -164,7 +164,7 @@ class AiService(Service):
 				if score > best_score:
 					best_score, best_name = score, name
 
-		if best_name is not None and best_score >= config.ai.threshold:
+		if best_name is not None and best_score >= config.resolver.threshold:
 			return get_command(str(best_name))
 		return None
 

@@ -88,6 +88,44 @@ async def _load_sensor(sensor_opts: SensorConfig) -> tuple[Service|None, bool]:
 	return sensor, loadable
 
 
+async def _load_resolver(service_name: str, *args, **kwargs) -> tuple[Service | None, bool]:
+	"""
+	Load the AI command resolver, trying the candidate backends in priority
+	order until one loads.
+
+	:return: (service, loadable) — the loaded resolver service and True, or
+		(None, False) when AI is disabled or no backend could load.
+	"""
+	try:
+		mem_threshold = 1980 * 1024 * 1024
+		mem_avail = psutil.virtual_memory().total
+
+		if service_name == 'ai':
+			from raspberry_pi_mesh_weather.services.ai import AiService
+			service = AiService()
+		elif service_name == 'auto' and mem_avail >= mem_threshold:
+			from raspberry_pi_mesh_weather.services.ai import AiService
+			service = AiService()
+		elif service_name == 'nltk':
+			from raspberry_pi_mesh_weather.services.nltk import NltkService
+			service = NltkService()
+		elif service_name == 'auto' and mem_avail < mem_threshold:
+			from raspberry_pi_mesh_weather.services.nltk import NltkService
+			service = NltkService()
+		else:
+			logging.error('Unsupported command resolver type requested: [%s]', service_name)
+			return None, False
+	except Exception as e:
+		logging.error('Command resolver %s could not be loaded: %s', service_name, e)
+		return None, False
+
+	logging.info('Loading resolver %s', service.get_name())
+	loadable = await service.load()
+	if not loadable:
+		logging.error('%s could not be loaded!', service.get_name())
+	return service, loadable
+
+
 async def _load_service(service_name: str, *args, **kwargs) -> tuple[Service|None, bool]:
 	"""
 	Lazy load a generic service
@@ -98,10 +136,7 @@ async def _load_service(service_name: str, *args, **kwargs) -> tuple[Service|Non
 	:return:
 	"""
 	try:
-		if service_name == 'ai':
-			from raspberry_pi_mesh_weather.services.ai import AiService
-			service = AiService()
-		elif service_name == 'tasks':
+		if service_name == 'tasks':
 			from raspberry_pi_mesh_weather.services.scheduled_tasks import ScheduledTasks
 			service = ScheduledTasks(*args, **kwargs)
 		elif service_name == 'homeassistant':
@@ -144,14 +179,15 @@ async def daemon_main(test: bool = False):
 	if radio_loaded and radio:
 		services.append(radio)
 
-	# Load the AI command resolver if requested (opt-in; an in-process
-	# sentence transformer for natural-language direct-message resolution)
-	if config.ai.enabled:
-		ai, loadable = await _load_service('ai')
-		if loadable and ai:
-			services.append(ai)
+	# Load the AI command resolver if requested (opt-in): the sentence
+	# transformer resolver on capable hardware, with the lightweight nltk
+	# resolver as fallback when it cannot load (see `_load_ai_service`)
+	if config.resolver.enabled:
+		resolver, loadable = await _load_resolver(config.resolver.backend)
+		if loadable and resolver:
+			services.append(resolver)
 		else:
-			logging.error('AI command resolver could not be loaded; natural-language direct messages will require exact command matches')
+			logging.error('Command resolver could not be loaded')
 
 	# Load the shared scheduled tasks service (currently runs the morning and
 	# evening forecast broadcast, which is radio-independent once the radio
