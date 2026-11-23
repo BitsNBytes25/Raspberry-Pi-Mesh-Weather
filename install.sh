@@ -64,9 +64,9 @@ AI_NLK_ADDED=false
 
 if [ "$(yq -r '.resolver.enabled // false' "$CONFIG")" == "true" ]; then
 	TOTAL_MEM_MB=$(awk '/^MemTotal:/ {printf "%.0f", $2/1024}' /proc/meminfo)
-	AI_RESOLVER="$(yq -r '.resolver.backend // auto' "$CONFIG")"
+	AI_RESOLVER="$(yq -r '.resolver.backend' "$CONFIG")"
 
-	if [ "$AI_RESOLVER" == "auto" ]; then
+	if [ "${AI_RESOLVER:-auto}" == "auto" ]; then
 		if [ "${TOTAL_MEM_MB:-0}" -lt 1980 ]; then
 			# Check if the total amount of system memory is too low to enable AI features.
 			# Technically the user can run it using swap, but this is REALLY not recommended
@@ -84,7 +84,7 @@ if [ "$(yq -r '.resolver.enabled // false' "$CONFIG")" == "true" ]; then
 			UVCMD+=(--group resolver-ai)
 			AI_GROUP_ADDED=true
 		fi
-	elif [ "$AI_RESOLVER" == "ai" ]; then
+	elif [ "${AI_RESOLVER:-auto}" == "ai" ]; then
 		if [ "${TOTAL_MEM_MB:-0}" -lt 1980 ]; then
 			# Check if the total amount of system memory is too low to enable AI features.
 			# Technically the user can run it using swap, but this is REALLY not recommended
@@ -100,7 +100,7 @@ if [ "$(yq -r '.resolver.enabled // false' "$CONFIG")" == "true" ]; then
 			UVCMD+=(--group resolver-ai)
 			AI_GROUP_ADDED=true
 		fi
-	elif [ "$AI_RESOLVER" == "nltk" ]; then
+	elif [ "${AI_RESOLVER:-auto}" == "nltk" ]; then
 		echo "Enabling dependencies for the lightweight AI command resolver (nltk)"
 		UVCMD+=(--group resolver-nltk)
 		AI_NLK_ADDED=true
