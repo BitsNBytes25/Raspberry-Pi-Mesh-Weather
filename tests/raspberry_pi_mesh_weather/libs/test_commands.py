@@ -1,10 +1,12 @@
 from datetime import datetime, timezone
 
+import inspect
 import importlib.metadata
 import pytest
 
 from raspberry_pi_mesh_weather.libs import sun as sun_lib
 from raspberry_pi_mesh_weather.libs import commands
+from raspberry_pi_mesh_weather.libs.commands import command_catalog
 from raspberry_pi_mesh_weather.libs import icon_map
 from raspberry_pi_mesh_weather.libs.commands import (
 	about,
@@ -1086,3 +1088,55 @@ def test_alerts_command_fetch_failure(mocker):
 
 	assert result.success is False
 	assert result.message.startswith('Weather Alerts: An error occurred during alert fetching/broadcasting:')
+
+
+# --- command catalog (AI resolver anchors) -----------------------------
+
+
+def test_command_catalog_covers_all_direct_commands():
+	from raspberry_pi_mesh_weather.libs.commands.handler import _direct_commands
+	catalog = {entry['name']: entry for entry in command_catalog()}
+	assert set(catalog) == set(_direct_commands)
+
+
+def test_command_catalog_entries_have_name_aliases_and_anchors():
+	catalog = {entry['name']: entry for entry in command_catalog()}
+	for name, entry in catalog.items():
+		assert entry['name'] == name
+		assert entry['aliases'] == sorted(entry['aliases'])
+		assert entry['anchors'], f'command {name!r} has no anchors'
+		for anchor in entry['anchors']:
+			assert anchor == anchor.strip() and anchor, f'blank or unstripped anchor: {anchor!r}'
+			assert '\n' not in anchor
+		assert len(entry['anchors']) == len(set(entry['anchors'])), f'duplicate anchors for {name!r}'
+
+
+def test_command_catalog_requires_docstrings_for_direct_commands():
+	"""
+	Every direct command must carry a docstring: each non-empty line is an
+	anchor for the AI resolver.  A missing docstring would silently fall back
+	to name/alias-only resolution, so this test requires one.
+	"""
+	from raspberry_pi_mesh_weather.libs.commands.handler import _direct_commands
+	for name, fn in _direct_commands.items():
+		assert inspect.getdoc(fn) is not None, (
+			f"command {name!r} has no docstring; "
+			'the AI command resolver derives its anchors from docstring lines'
+		)
+
+
+def test_command_catalog_aliases_are_anchors():
+	catalog = {entry['name']: entry for entry in command_catalog()}
+	assert 'temp' in catalog['temperature']['anchors']
+	assert 'pres' in catalog['pressure']['anchors']
+	assert 'humid' in catalog['humidity']['anchors']
+
+
+def test_command_catalog_falls_back_to_name_without_docstring(mocker):
+	from raspberry_pi_mesh_weather.libs.commands import handler as handler_module
+	fake = lambda target=None: None
+	mocker.patch.dict(handler_module._direct_commands, {'catalog_test_command': fake})
+	entry = next(e for e in command_catalog() if e['name'] == 'catalog_test_command')
+	assert entry['name'] == 'catalog_test_command'
+	assert entry['aliases'] == []
+	assert entry['anchors'] == ['catalog_test_command']

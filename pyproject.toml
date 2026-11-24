@@ -11,6 +11,7 @@ dependencies = [
     "RPi.GPIO>=0.7.1",
     "smbus2>=0.6.1",
     "spidev>=3.8",
+    "psutil>=7.2.2"
 ]
 
 [tool.uv]
@@ -31,10 +32,16 @@ radio-meshtastic = [
 ]
 sensor-bme280 = [
     "pimoroni-bme280>=1.0.0",
-    "rpi-bme280>=0.2.4",
 ]
 display-sh1106 = [
     "luma.oled>=3.15.0",
+]
+
+resolver-ai = [
+    "sentence-transformers==3.1.1",
+]
+resolver-nltk = [
+    "nltk>=3.9.4",
 ]
 
 [project.scripts]

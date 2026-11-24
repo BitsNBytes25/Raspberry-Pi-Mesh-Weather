@@ -47,6 +47,13 @@ def build_alerts_response(alerts) -> CommandResponse:
 
 @command('alerts', direct=True, group=True)
 def cmd_alerts(target: str | None = None) -> CommandResponse:
+	"""
+	List the currently active weather alerts for the area.
+	What weather alerts are active
+	Are there any weather alerts
+	Weather warnings
+	Check the alerts
+	"""
 	lat = config.location.lat
 	lon = config.location.lon
 

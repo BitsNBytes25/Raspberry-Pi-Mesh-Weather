@@ -25,6 +25,13 @@ from .handler import command, CommandResponse, CommandResponseSuccess
 
 @command('cpu', direct=True)
 def cmd_cpu(target: str | None = None) -> CommandResponse:
+	"""
+	Report the CPU load percentage and temperature, if available.
+	CPU temperature
+	What is the CPU load
+	How hot is the CPU
+	Processor temperature
+	"""
 	temp = None
 	try:
 		# Default location of CPU thermal probe for Raspberry Pis

@@ -6,7 +6,7 @@ from meshcore import MeshCore, EventType
 
 from raspberry_pi_mesh_weather.auth.mqtt_auth_meshcore_jwt_token import MqttAuthMeshcoreJwtToken
 from raspberry_pi_mesh_weather.auth.mqtt_auth_simple import MqttAuthSimple
-from raspberry_pi_mesh_weather.libs.commands import get_command
+from raspberry_pi_mesh_weather.libs.commands import get_command, resolve_message
 from raspberry_pi_mesh_weather.libs.config import config
 from raspberry_pi_mesh_weather.libs.mesh_contacts import MeshContact, store_contact
 from raspberry_pi_mesh_weather.libs.meshcore_packet import MeshcorePacket
@@ -80,7 +80,9 @@ class MeshcoreRadio(Service):
 		text = event.payload.get('text', '').lower()
 		target = event.payload.get('pubkey_prefix', '')
 
-		cmd = get_command(text)
+		# Worker-thread call: embedding (when AI is enabled) is blocking and
+		# must not stall the daemon event loop.
+		cmd = await asyncio.to_thread(resolve_message, text)
 		if cmd is None:
 			message = 'Sorry, I don\'t understand that command.  Try "help" for a list of commands.'
 		else:

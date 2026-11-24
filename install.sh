@@ -17,6 +17,15 @@ if [ ! -e "$CONFIG" ]; then
 	exit 1
 fi
 
+# If the service exists, ensure it is stopped before updating the system.
+if [ -e /etc/systemd/system/mesh-weather.service ]; then
+	if sudo systemctl is-active mesh-weather >/dev/null; then
+		echo "Stopping mesh-weather prior to update"
+		sudo systemctl stop mesh-weather
+	fi
+fi
+
+
 if ! command -v yq &> /dev/null; then
 	echo "Installing yq as dependency for installation"
 	sudo apt install -y yq
@@ -50,8 +59,79 @@ for SENSOR in $(yq -r '(.sensors // [])[].type' "$CONFIG"); do
 	UVCMD+=(--group sensor-$SENSOR)
 done
 
+AI_GROUP_ADDED=false
+AI_NLK_ADDED=false
+
+if [ "$(yq -r '.resolver.enabled // false' "$CONFIG")" == "true" ]; then
+	TOTAL_MEM_MB=$(awk '/^MemTotal:/ {printf "%.0f", $2/1024}' /proc/meminfo)
+	AI_RESOLVER="$(yq -r '.resolver.backend // "auto"' "$CONFIG")"
+
+	if [ "$AI_RESOLVER" == "auto" ]; then
+		if [ "${TOTAL_MEM_MB:-0}" -lt 1980 ]; then
+			# Check if the total amount of system memory is too low to enable AI features.
+			# Technically the user can run it using swap, but this is REALLY not recommended
+			echo "Only ${TOTAL_MEM_MB} MB of RAM detected."
+			echo "     Selecting nltk command resolver."
+			UVCMD+=(--group resolver-nltk)
+			AI_NLK_ADDED=true
+		else
+			# torch by default will install cuda libraries; these are not available on a raspberry pi.
+			# Install the CPU version manually to ensure it doesn't try to use cuda.
+			echo "Installing CPU version of torch for AI support"
+			$UV_PATH pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+			echo "Enabling dependencies for AI command resolver (sentence-transformers)"
+			UVCMD+=(--group resolver-ai)
+			AI_GROUP_ADDED=true
+		fi
+	elif [ "$AI_RESOLVER" == "ai" ]; then
+		if [ "${TOTAL_MEM_MB:-0}" -lt 1980 ]; then
+			# Check if the total amount of system memory is too low to enable AI features.
+			# Technically the user can run it using swap, but this is REALLY not recommended
+			echo "⚠️  WARNING: Only ${TOTAL_MEM_MB} MB of RAM detected. AI support requires ~2 GB."
+			echo "     Switch backend to 'auto' or 'nltk' to make use of command resolving"
+		else
+			# torch by default will install cuda libraries; these are not available on a raspberry pi.
+			# Install the CPU version manually to ensure it doesn't try to use cuda.
+			echo "Installing CPU version of torch for AI support"
+			$UV_PATH pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+			echo "Enabling dependencies for AI command resolver (sentence-transformers)"
+			UVCMD+=(--group resolver-ai)
+			AI_GROUP_ADDED=true
+		fi
+	elif [ "$AI_RESOLVER" == "nltk" ]; then
+		echo "Enabling dependencies for the lightweight AI command resolver (nltk)"
+		UVCMD+=(--group resolver-nltk)
+		AI_NLK_ADDED=true
+	fi
+fi
+
 echo "Installing all Python dependencies"
 "${UVCMD[@]}"
+
+# --- Optional: AI command resolver (sentence-transformers) ---------------
+#
+# The AI dependency group is added to UVCMD above when ai.enabled is true.
+# The model (default: sentence-transformers/all-MiniLM-L6-v2) is downloaded
+# to the local Hugging Face cache on first daemon load when online.  For an
+# offline Pi, point ai.model_path at a local directory containing the model
+# files, e.g.:
+#
+#   huggingface-cli download sentence-transformers/all-MiniLM-L6-v2 --local-dir /path/to/model
+if [ "$AI_GROUP_ADDED" = "true" ]; then
+	echo "AI command resolver enabled; the model will be downloaded on first run (if online)"
+fi
+
+# nltk data for the lightweight command resolver (installed on every device with
+# AI enabled, so the fallback works even when the model is offline).
+if [ "$AI_NLK_ADDED" = "true" ]; then
+	echo "Downloading nltk data for the lightweight AI command resolver"
+	if ! $UV_PATH run python -m nltk.downloader punkt_tab punkt stopwords -y 2>/dev/null; then
+		echo "     WARNING: could not download nltk data; the nltk command resolver will"
+		echo "     not be usable until the data is available."
+	fi
+fi
 
 echo "🛠️ Creating systemd service files..."
 
@@ -84,8 +164,14 @@ sudo systemctl daemon-reload
 echo "✅ Enabling services on boot..."
 sudo systemctl enable mesh-weather.service
 
+echo "Testing daemon..."
+if ! $UV_PATH run daemon --test; then
+	echo "!! TEST RUN FAILED !!"
+	exit 1
+fi
+
 echo "▶️ Starting services..."
-sudo systemctl restart mesh-weather.service
+sudo systemctl start mesh-weather.service
 
 echo "🎉 Installation complete!"
 echo "Check status with: systemctl status mesh-weather"

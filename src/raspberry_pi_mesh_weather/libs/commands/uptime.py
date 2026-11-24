@@ -24,6 +24,12 @@ from .handler import command, CommandResponse, CommandResponseError, CommandResp
 
 @command('uptime', direct=True)
 def cmd_uptime(target: str | None = None) -> CommandResponse:
+	"""
+	Report how long the device has been up.
+	What is the uptime
+	How long has the device been up
+	Device uptime
+	"""
 	uptime = None
 	try:
 		with open('/proc/uptime', 'r') as f:

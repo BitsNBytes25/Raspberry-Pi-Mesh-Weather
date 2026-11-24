@@ -24,12 +24,12 @@ from raspberry_pi_mesh_weather.libs.icon_map import STANDARD_ICON_NAMES, get_ico
 @command('icons', direct=True)
 def cmd_icons(target: str | None = None) -> CommandResponse:
 	"""
-	Return all weather glyphs for the currently configured icon style,
-	so the sender can verify which icons render on their device.
-
-	The glyphs are listed in `STANDARD_ICON_NAMES` order, a fixed canonical
-	sequence so every device shows the same arrangement and the user can
-	identify which glyph failed to render.
+	List the weather glyphs the service can render on mesh devices, so the
+	sender can verify which icons their device displays.
+	Which icons can the service show
+	Show the weather icons
+	Which glyphs render
+	Icon test
 	"""
 	icons = ' '.join(get_icon(name) for name in STANDARD_ICON_NAMES)
 	return CommandResponseSuccess(icons)

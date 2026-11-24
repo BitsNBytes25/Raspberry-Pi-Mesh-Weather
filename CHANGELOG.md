@@ -7,8 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [NEXT] - YYYY-MM-DD
 
+### Added
+
+- **AI command resolution via in-process sentence transformer** (`services/ai.py`) — Opt-in natural-language handling of direct messages using a small embedding model (default `sentence-transformers/all-MiniLM-L6-v2`, ~39 MB), running in-process instead of as a llama.cpp sidecar. When `ai.enabled` is true, the daemon loads the model on startup and generates the embedding vectors for every command anchor once (worker thread via `asyncio.to_thread`). Only when an exact command/alias match fails is the message embedded and compared against the cached anchors; the best match wins when its cosine similarity is at or above `ai.threshold`. Replies are always produced by the normal command. If the model is disabled, the model is unavailable, embedding fails, or nothing matches closely enough, the existing "I don't understand that command" response is sent — no crash and no AI noise. The DM handler runs resolution on a worker thread so the event loop is never blocked.
+- **Command docstrings as resolver anchors** — Every direct command function's docstring lines are the command's anchor phrasings (one phrase per line, plus its registered aliases), read via `command_catalog()` in `libs/commands/handler.py`. A new command's docstring automatically provides its resolver anchors; a command without a docstring falls back to name/alias-only resolution (logged at load time).
+- **`ai` configuration section** (`libs/config.py`) — New `ResolverConfig` with keys `enabled` (default `false`), `model_path` (Hugging Face model ID or absolute path to a local model directory; default `sentence-transformers/all-MiniLM-L6-v2`), and `threshold` (minimum anchor cosine similarity to count as a match, default `0.55`); documented in `config.yaml.example`.
+- **`resolve_message()`** (`libs/commands/handler.py`) — Direct-message resolution entry point: exact `get_command()` first, then the AI resolver. Both radio DM handlers now dispatch through it (group-channel and scheduled-task paths are unchanged).
+- **Optional AI setup in `install.sh`** — When `ai.enabled` is true, the `ai` dependency group (`sentence-transformers`) is added to the `uv sync` invocation. The model is downloaded to the local Hugging Face cache on first daemon load when online; for offline Pis, point `ai.model_path` at a local directory (e.g. produced with `huggingface-cli download`).
+- **AI install-time memory guard** — When `ai.enabled` is true, `install.sh` reads total RAM from `/proc/meminfo`. If it's below the ~2 GB threshold (1980 MB), it skips the torch install and the `ai` dependency group and prints a warning, installing the lightweight `ai-nltk` group (and its nltk data) instead, so the nltk command resolver remains available; 2 GB boards report ~1,982 MB and install normally (torch + `ai` + `ai-nltk`); 1 GB boards (~970 MB) get the lightweight fallback only.
+- **Lightweight nltk command resolver** (`services/nltk.py`) — Fallback for low-memory Pis that needs no model runtime:
+  tokenizes, stems (PorterStemmer) and filters stopwords from messages, then scores them against the same command catalog
+  anchors with IDF-weighted bag-of-words cosine similarity, plus an exact token-multiset fallback for function-word-only
+  phrases (e.g. "what can you do").  A few hundred KB of nltk data and a few MB of RAM.
+- **`ai.backend` + `ai.nltk_threshold`** — `ai.backend: auto` (default) loads the sentence-transformer resolver first and
+  falls back to nltk when it cannot load (low-RAM Pis, offline model cache); `ai.backend: transformer` or `ai.backend:
+  nltk` force a single backend.  `ai.nltk_threshold` sets the matching threshold for the nltk backend (defaults to
+  `ai.threshold`); `ai.model_path`, `ai.threshold` and `ai.device` apply to the transformer backend only.
+- **`ai-nltk` dependency group** — `nltk>=3.9.4`.  `install.sh` now installs this group whenever `ai.enabled` is true
+  (in addition to the `ai` group on 2 GB+ devices) and pre-downloads the nltk data for offline Pis; on low-RAM Pis only
+  this group is installed.
+- **`daemon._load_ai_service()`** — New daemon helper that tries the candidate AI backends in priority order
+  (`_ai_backends()`, from `ai.enabled`/`ai.backend`) and returns the first one that loads, so the transformer failure
+  path now degrades to nltk instead of leaving natural-language DMs unsupported.
+- **Hardware-free CLI radio** (`services/radios/cli_radio.py`) — A development "radio" that uses no hardware and presents an interactive terminal prompt instead.  Enable with `radio.type: "cli"`, start the daemon, and type messages as if received over the mesh.  Each line is treated as a *direct message* and resolved through the same `resolve_message` path used by the other radios (exact/alias match, then the opt-in AI resolver, run on a worker thread), executed against a target, and printed to the terminal — so the full command machinery can be exercised without attached radio hardware.  Plain lines use a default sender target (new `radio.target` config key, falling back to the first `auth_radios` entry); a leading `@<pubkey>` overrides it for a specific radio, and the auth guard is enforced exactly as over the mesh (unauthorized callers get the standard "not authorized" response).  Scheduled-task `broadcast(text)` output is echoed to the terminal.  `?` shows the CLI help; `quit`, `exit`, or `Ctrl-D (EOF)` request a daemon shutdown via a new `ShutdownRequested` exception in `services/service.py`, caught in the daemon so every service is stopped cleanly.  `daemon.py` gained the `cli` radio branch and the `ShutdownRequested` handler; `RadioConfig` gained the `target` key.
+- Add new method **register_message_handler** for registering a custom function for processing direct messages.  Provides support for more advanced interactions beyond simple command/response.
+ 
 ### Changed
 
+- Retooled service loading and standardized interface in the daemon; should make it easier to add new services in the future.
+- **AI install-time memory guard** — Low-RAM Pis with `ai.enabled: true` now get the lightweight `ai-nltk` dependency group
+  plus nltk data instead of skipping AI entirely, so the nltk command resolver is usable rather than AI being unavailable.
 
 
 ## [2.0.0] - 2026-11-17

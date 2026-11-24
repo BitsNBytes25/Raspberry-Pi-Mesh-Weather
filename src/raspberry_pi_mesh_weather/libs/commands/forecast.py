@@ -104,8 +104,12 @@ def _forecast_summary(entries: list[dict]) -> str:
 @command('forecast', direct=True, group=True)
 def cmd_daily_forecast(target: str | None = None) -> CommandResponse:
 	"""
-	Fetches the next forecast entries and broadcasts a compact two-state
-	summary over the mesh network.
+	Show the upcoming weather forecast for the coming days.
+	What's the forecast
+	What is the forecast
+	What's the weather tomorrow
+	Weather forecast
+	Will it rain tomorrow
 	"""
 	api = config.weather.openweather_api_key
 	lat = config.location.lat

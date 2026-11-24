@@ -56,6 +56,12 @@ def _weather_icon(temp: float | None, humidity: float | None, pressure_change: f
 def cmd_all_sensors(target: str | None = None) -> CommandResponse:
 	"""
 	Report all available local sensor readings along with the current weather.
+	What is the weather
+	What's the weather like right now
+	What is the current weather
+	Current conditions
+	Full weather report
+	All the weather
 	"""
 	temp = get_temperature()
 	humidity = get_humidity()

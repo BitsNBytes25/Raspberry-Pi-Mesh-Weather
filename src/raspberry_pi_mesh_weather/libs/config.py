@@ -25,6 +25,64 @@ class RadioConfig:
 	interface: str = 'serial'
 	port: str = '/dev/ttyUSB0'
 	baud_rate: int = 115200
+	# Public-key prefix used by the CLI radio (`radio.type: "cli"`) as the
+	# sender for un-targeted direct messages.  When left empty, the CLI radio
+	# falls back to the first entry of `auth_radios` so authorized commands
+	# work by default.
+	target: str = ''
+
+
+@dataclass
+class ResolverConfig:
+	"""
+	Configuration handler for AI options
+
+	"""
+	# Optional in-process command resolver: natural-language handling of direct
+	# messages.  Two backends are available, both using the same command
+	# catalog anchors:
+	#   - "transformer": a small sentence-transformer model (best
+	#     natural-language support, but heavy — needs the torch runtime plus a
+	#     ~39 MB model, recommended for 2 GB+ devices)
+	#   - "nltk": a lightweight lexical resolver (stemmed TF-IDF bag-of-words
+	#     cosine similarity).  Tiny footprint; the fallback for low-memory Pis.
+	#
+	# Exact command/alias matches are always tried first and win; the resolver
+	# is only consulted when those fail, and it can only pick from the existing
+	# command catalog, with replies still produced by the normal commands.
+	# Disabled by default.
+	#
+	# Anchors are the command functions' docstrings (one phrasing per line);
+	# their vectors are generated once at daemon startup.
+
+	enabled: bool = False
+	"""
+	Set to True to enable this service; setting to False (default) will prevent any natural language support
+	"""
+
+	# Backend for the command resolver.  "auto" (default) uses the
+	# sentence-transformer resolver when it can load and falls back to the
+	# lightweight nltk resolver when it cannot (low-RAM Pis, or an offline Pi
+	# without a model cache).  "ai" and "nltk" force a single backend.
+	backend: str = 'auto'
+
+	# Hugging Face model ID (auto-downloaded on first load, or cached if already
+	# present) or an absolute path to a local directory containing the model
+	# files (for offline Pis).  Only used by the transformer backend.
+	model_path: str = 'sentence-transformers/all-MiniLM-L6-v2'
+	# Minimum cosine similarity between a message embedding and a command's
+	# anchors for it to be considered a match (0.0-1.0; higher is stricter).
+	# Only used by the transformer backend.
+	threshold: float = 0.55
+	device: str = 'cpu'
+	"""
+	 device (str, optional): Device (like "cuda", "cpu", "mps", "npu") that should be used for computation.
+	"""
+
+	# Minimum cosine similarity for the nltk resolver to consider a match
+	# (0.0-1.0; higher is stricter).  Only used by the nltk backend; defaults
+	# to `threshold` when left unset.
+	nltk_threshold: float | None = None
 
 
 @dataclass
@@ -89,6 +147,7 @@ class Config:
 	radio: RadioConfig
 	sensors: list[SensorConfig]
 	location: LocationConfig
+	resolver: ResolverConfig
 	weather: WeatherConfig
 	general: GeneralConfig
 	home_assistant: HomeAssistantConfig
@@ -117,6 +176,7 @@ class Config:
 			radio=RadioConfig(**raw_data['radio']),
 			sensors=sensors,
 			location=LocationConfig(**raw_data['location']),
+			resolver=ResolverConfig(**raw_data.get('resolver', {})),
 			weather=WeatherConfig(**raw_data['weather']),
 			general=GeneralConfig(**raw_data.get('general', {})),
 			home_assistant=HomeAssistantConfig(**raw_data['home_assistant']),

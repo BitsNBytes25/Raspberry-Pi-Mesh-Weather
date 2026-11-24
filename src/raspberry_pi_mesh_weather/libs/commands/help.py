@@ -22,6 +22,13 @@ from .handler import command, CommandResponse, CommandResponseSuccess, _direct_c
 
 @command('help', direct=True)
 def cmd_direct_help(target: str | None = None) -> CommandResponse:
+	"""
+	List the available direct message commands.
+	What commands are available
+	What can you do
+	Help
+	List the commands
+	"""
 	message = ''
 	commands = []
 	for cmd in _direct_commands.keys():
@@ -36,6 +43,11 @@ def cmd_direct_help(target: str | None = None) -> CommandResponse:
 
 @command('help', group=True)
 def cmd_group_help(target: str | None = None) -> CommandResponse:
+	"""
+	List the weather channel group commands.
+	What commands are available here
+	Channel help
+	"""
 	message = ''
 	commands = _group_commands.keys()
 	message += '!' + ' | !'.join(commands)

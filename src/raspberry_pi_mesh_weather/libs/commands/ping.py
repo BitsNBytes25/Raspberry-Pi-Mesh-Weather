@@ -22,6 +22,12 @@ from .handler import command, CommandResponse, CommandResponseSuccess
 
 @command('ping', direct=True)
 def cmd_ping(target: str | None = None) -> CommandResponse:
+	"""
+	Radio health check; replies with pong.
+	Ping the device
+	Are you online
+	Is the radio working
+	"""
 	if target is None:
 		return CommandResponseSuccess('pong')
 	return CommandResponseSuccess(f'pong {target}')

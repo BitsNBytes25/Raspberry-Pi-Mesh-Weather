@@ -31,9 +31,11 @@ PROJECT_URL = 'github.com/BitsNBytes25/Raspberry-Pi-Mesh-Weather'
 @command('about', direct=True)
 def cmd_about(target: str | None = None) -> CommandResponse:
 	"""
-	Report application information: version (from the installed package
-	metadata, set by pyproject.toml), the project link, and the operator
-	name from the general.operated_by setting when configured.
+	Report the application's project link, version and operator name.
+	What is the version
+	Which version is running
+	About this device
+	What is this software
 	"""
 	parts = [
 		PROJECT_URL,
