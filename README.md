@@ -1,18 +1,25 @@
 # Raspberry PI Mesh Weather Sensor
 
-Integrates with MeshCore (or Meshtastic) and Home Assistant for logging local weather data
-and providing basic chat support on the Mesh network.
+Provides weather forecasts and environmental sensor data to MeshCore or Meshtastic meshes.
 
 Designed to run on a Raspberry Pi, but can run on any Linux-based device.
 
 **Currently only serial/USB connected radios are supported.**
-This may be changed in the future to include support for Bluetooth, but for the moment your radio must be directly connected.
+
 
 ## Feature Overview
 
 All features are optional and can be enabled or disabled via the configuration.
 **Important**: when adding or removing enabled modules, it is recommended to re-run `install.sh`
 to rebuild the dependencies for any changed feature.
+
+### Optimized for Low Powered Hardware
+
+Specifically optimized to run well on Raspberry Pis and other low-power devices.
+
+Memory requirements as low as 128MB of system memory allow running on even the smallest of SoC systems.
+
+**No database** means no write fatigue when running on SD cards.
 
 ### Environmental Sensor Tracking
 
@@ -80,9 +87,9 @@ command/alias matches always take precedence.  When the resolver is
 unavailable or no anchor is close enough, the usual "I don't understand that
 command" response is sent.
 
-Two backends are available, selected with `ai.backend`:
+Two backends are available, selected with `resolver.backend`:
 
-- **`transformer`** (recommended on capable hardware) — a small in-process
+- **`ai`** (recommended on capable hardware) — a small in-process
   sentence transformer (no sidecar process).  Best natural-language support,
   but heavy: the torch runtime plus a ~39 MB model; a 2 GB Raspberry Pi is the
   recommended minimum.  Once loaded, resolutions typically take tens to low
@@ -91,15 +98,15 @@ Two backends are available, selected with `ai.backend`:
   cosine similarity).  Only a few hundred KB of nltk data and a few MB of RAM
   are needed, making it the fallback for low-memory Pis.
 
-`ai.backend: auto` (the default) uses the transformer resolver when it can
+`resolver.backend: auto` (the default) uses the transformer resolver when it can
 load and falls back to nltk when it cannot (low-RAM Pis, or an offline Pi with
-no model cache).  `ai.enabled: true` enables the feature; re-running
+no model cache).  `resolver.enabled: true` enables the feature; re-running
 `install.sh` installs the matching dependency group(s) — `ai`
-(`sentence-transformers` + torch on 2 GB+ devices) and `ai-nltk` (the lightweight
+(`sentence-transformers` + torch on 2 GB+ devices) and `nltk` (the lightweight
 resolver, installed everywhere AI is enabled).  The default model
 (`sentence-transformers/all-MiniLM-L6-v2`) is downloaded to the local Hugging
 Face cache on first daemon load when connectivity is available.  For an
-offline Pi, pre-download the model to a local directory and point `ai.model_path`
+offline Pi, pre-download the model to a local directory and point `resolver.model_path`
 at it:
 
 ```bash
@@ -108,7 +115,10 @@ huggingface-cli download sentence-transformers/all-MiniLM-L6-v2 \
 ```
 
 
-## Hardware
+## Example Hardware
+
+This project does not need any hardware other than a radio and a Pi, 
+but environmental sensors may be added to the Pi to retrieve local conditions.
 
 Refer to our [build guide](https://bitsnbytes.dev/posts/2026-05/pi-mesh-weather-sensor.html)
 for details on assembling the hardware for this project and wiring schematics.
@@ -131,13 +141,12 @@ cp config.yaml.example config.yaml
 vim config.yaml
 
 # Run the install script
-chmod +x install.sh
 ./install.sh
 ```
 
 ### Installation on 32-bit OS
 
-Raspberry Pi 2 may ship with a 32-bit operating system; in that case you may need to manually install additional depdendencies.
+Raspberry Pi 2 may ship with a 32-bit operating system; in that case you may need to manually install additional dependencies.
 
 ```bash
 # Install a few dependencies for building libraries not included anymore
@@ -171,10 +180,6 @@ cd Raspberry-Pi-Mesh-Weather
 # Configure the local config file (git-ignored; copy from the example)
 cp config.yaml.example config.yaml
 vim config.yaml
-
-# Legacy env file (not read by the current code, but kept in the repo for compatibility)
-cp .env.example .env
-vim .env
 ```
 
 ### Dependencies
